@@ -210,9 +210,6 @@
     // up
     else if (key === `ArrowUp` && !shiftKey) {
       // FIXME: we need the real line height here, not an assumed 16 px
-      let lh = getComputedStyle($0).getPropertyValue(`line-height`);
-      $0.style.lineHeight = `calc(${lh} + 0.0001px)`;
-      console.log()
       placeCursor(p, cursorCoordinate.x, cursorCoordinate.y - 16);
     }
 
