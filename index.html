@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width" />
+  <title>test</title>
+</head>
+
+<style>
+  :root {
+    font-family: Arial, Helvetica, sans-serif;
+  }
+  main p {
+    width: 12em;
+    border: 1px solid black;
+    margin: 1em;
+    padding: 1em;
+  }
+  #cursor {
+    position: absolute;
+    width: 1px;
+    height: 1em;
+    background: black;
+    animation: 1s cursor-blink linear forwards infinite;
+    animation-timing-function: steps(3, end);
+  }
+  @keyframes cursor-blink {
+    0% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 1;
+    }
+    51% {
+      opacity: 0;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+</style>
+
+<body>
+  <h1>Creating an editable paragraph</h1>
+  <main>
+    <div id="cursor"></div>
+    <p>
+      This is a text, and the idea is that we can put a cursor in here without
+      relying on "contenteditable", instead working directly in the paragraph
+      itself.
+    </p>
+  </main>
+  <ul>
+    <li>clicking places the cursor</li>
+    <li>arrow keys move the cursor</li>
+    <li>typing (unsurprisingly) inserts text</li>
+    <li>backspace removes to the left of the cursor</li>
+    <li>delete removes to the right of the cursor</li>
+  </ul>
+  <h2>How?</h2>
+  <p>
+    HTML elements contain text nodes, and text nodes can be turned into text
+    ranges with metrics that reflect the browser's rendered page. That means we
+    can keep track of a "cursor" and visualize that with a little div that's 1px
+    wide and a full line high, positioned at "whatever that cursor position's
+    corresponding range selection is". Presto. Cursor.
+  </p>
+  <p>
+    Inserting text or breaking up the paragraph then becomes trivial: we just
+    update its textContent, and set the cursor position to whatever now makes
+    sense.
+  </p>
+  <p>
+    moving the cursor up and down is satisfyingly simple: we simply track the
+    cursor's x/y coordinate, and then fake a click for the same x, but a y value
+    that has the line height subtracted or added.
+  </p>
+</body>
+
+<!-- we stick our script after our HTML document -->
+<script title="preamble">
+  const px = `px`;
+  const cursor = document.getElementById(`cursor`);
+  const p = document.querySelector(`main p`);
+  p.innerHTML = p.innerHTML.replace(/\s+/g, ` `).trim();
+  const text = p.childNodes[0];
+
+  let currentElement = text;
+  let cursorPosition = 0;
+  let cursorCoordinate = { x: 0, y: 0 };
+</script>
+
+<script title="our main functions">
+  function updateCursor() {
+    const { textContent: text } = currentElement;
+    const atEnd = cursorPosition >= text.length;
+    const start = atEnd ? text.length - 1 : cursorPosition;
+    const end = start + 1;
+
+    const range = document.createRange();
+    range.setStart(currentElement, start);
+    range.setEnd(currentElement, end);
+
+    const { x, y, width: w, height: h } = range.getBoundingClientRect() || {};
+    const m = y + h / 2;
+    const left = atEnd ? x + w : x - 1;
+    cursorCoordinate = { x: atEnd ? left : left + w / 2, y: m };
+
+    Object.assign(cursor.style, {
+      top: y + px,
+      left: left + px,
+    });
+
+    document.getAnimations().forEach((a) => {
+      if (a.animationName === `cursor-blink`) {
+        a.cancel();
+        a.play();
+      }
+    });
+
+    return true;
+  }
+
+  function incrementCursor(v = 1) {
+    cursorPosition += v;
+    if (cursorPosition > currentElement.textContent.length) {
+      cursorPosition = currentElement.textContent.length;
+    }
+    updateCursor();
+  }
+
+  function decrementCursor(v = 1) {
+    cursorPosition -= v;
+    if (cursorPosition < 0) {
+      cursorPosition = 0;
+    }
+    updateCursor();
+  }
+
+  function placeCursor(target, ox, oy) {
+    for (const node of target.childNodes) {
+      if (node.nodeType === 3) {
+        const range = document.createRange();
+        range.setStart(node, 0);
+        range.setEnd(node, node.textContent.length);
+        const { x, y, width: w, height: h } = range.getBoundingClientRect();
+        if (ox < x || ox > x + w || oy < y || oy > y + h) continue;
+        cursorPosition = findIndex(node, range, ox, oy);
+        return updateCursor();
+      }
+    }
+    return false;
+  }
+
+  function findIndex(
+    textNode,
+    range,
+    ox,
+    oy,
+    distance = Number.MAX_SAFE_INTEGER
+  ) {
+    const text = textNode.textContent;
+    let letterIndex = -1;
+    for (let s = 0; s < text.length - 1; s++) {
+      range.setStart(textNode, s);
+      range.setEnd(textNode, s + 1);
+      const { x, y, width: w, height: h } = range.getBoundingClientRect();
+      const cx = x + w / 2;
+      const cy = y + h / 2;
+      const d = ((ox - cx) ** 2 + (oy - cy) ** 2) ** 0.5;
+      if (d < distance + 3) {
+        distance = d;
+        letterIndex = s;
+      }
+    }
+    return letterIndex;
+  }
+
+  function backspace() {
+    const s = currentElement.textContent;
+    currentElement.textContent =
+      s.substring(0, cursorPosition - 1) + s.substring(cursorPosition);
+    decrementCursor();
+  }
+
+  function del() {
+    const s = currentElement.textContent;
+    currentElement.textContent =
+      s.substring(0, cursorPosition) + s.substring(cursorPosition + 1);
+  }
+</script>
+
+<script title="our event handling">
+  document.addEventListener(`keydown`, (evt) => {
+    const { key, shiftKey, altKey, ctrlKey, metaKey } = evt;
+    const special = altKey || ctrlKey || metaKey;
+
+    // right
+    if (key === `ArrowRight` && !shiftKey) {
+      evt.preventDefault();
+      incrementCursor();
+    }
+
+    // left
+    else if (key === `ArrowLeft` && !shiftKey) {
+      evt.preventDefault();
+      decrementCursor();
+    }
+
+    // up
+    else if (key === `ArrowUp` && !shiftKey) {
+      // FIXME: we need the real line height here, not an assumed 16 px
+      let lh = getComputedStyle($0).getPropertyValue(`line-height`);
+      $0.style.lineHeight = `calc(${lh} + 0.0001px)`;
+      console.log()
+      placeCursor(p, cursorCoordinate.x, cursorCoordinate.y - 16);
+    }
+
+    // down
+    else if (key === `ArrowDown` && !shiftKey) {
+      // FIXME: we need the real line height here, not an assumed 16 px
+      placeCursor(p, cursorCoordinate.x, cursorCoordinate.y + 16);
+    }
+
+    // backspace
+    else if (key === `Backspace`) {
+      backspace();
+    }
+
+    // del
+    else if (key === `Delete`) {
+      del();
+    }
+
+    // normal letters
+    else if (!special && key.length === 1 && key.codePointAt(0) > 0x19) {
+      const s = currentElement.textContent;
+      currentElement.textContent =
+        s.substring(0, cursorPosition) + key + s.substring(cursorPosition);
+      incrementCursor();
+    }
+  });
+
+  document.addEventListener(`click`, ({ target, clientX: ox, clientY: oy }) => {
+    placeCursor(target, ox, oy);
+  });
+</script>
+
+<script title="our final bootstrap">
+  cursorPosition = 0;
+  updateCursor();
+</script>
