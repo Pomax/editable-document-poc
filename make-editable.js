@@ -7,7 +7,6 @@ function addOverlay(element) {
   element.addEventListener(`click`, ({ target, clientX: ox, clientY: oy }) => {
     placeCursor(target, ox, oy);
   });
-  textArea.addEventListener(`keydown`, handleKey);
   textArea.addEventListener(`click`, (evt) => {
     currentElement.dispatchEvent(new evt.constructor(evt.type, evt));
   });
@@ -243,3 +242,5 @@ function handleKey(evt) {
     currentElement.clientHeight
   );
 }
+
+document.addEventListener(`keydown`, handleKey);
