@@ -1,0 +1,36 @@
+:root {
+  font-family: Arial, Helvetica, sans-serif;
+
+  #cursor {
+    position: absolute;
+    width: 1px;
+    height: 1em;
+    background: black;
+    animation: 1s cursor-blink linear forwards infinite;
+    animation-timing-function: steps(3, end);
+  }
+
+  main {
+    p {
+      width: 12em;
+      border: 1px solid black;
+      margin: 1em;
+      padding: 1em;
+    }
+  }
+}
+
+@keyframes cursor-blink {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 1;
+  }
+  51% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
+}
