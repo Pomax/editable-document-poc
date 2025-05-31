@@ -10,7 +10,7 @@
     animation-timing-function: steps(3, end);
   }
 
-  input[name="mobile"] {
+  textarea[name="mobile"] {
     position: fixed;
     top: 0;
     right: 0;
