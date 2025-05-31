@@ -17,13 +17,10 @@ function addOverlay(element) {
   });
   textArea.addEventListener(`keyup`, (evt) => {
     handleKey(evt);
-    debug.textContent = `keyup: ` + textArea.value;
   });
-  textArea.addEventListener(`keydown`, (evt) => {
-    debug.textContent = `keydown: ` + textArea.value;
-  });
-  textArea.addEventListener(`keypress`, (evt) => {
-    debug.textContent = `keypress: ` + textArea.value;
+  textArea.addEventListener(`input`, (evt) => {
+    debug.textContent = `input: ` + textArea.value;
+    textArea.value = ``;
   });
   const { left: x, top: y } = element.getBoundingClientRect();
   setDims(textArea, x, y, element.clientWidth, element.clientHeight);
