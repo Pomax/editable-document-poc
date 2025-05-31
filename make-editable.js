@@ -1,12 +1,35 @@
 const px = `px`;
 const cursor = document.getElementById(`cursor`);
+const textArea = document.querySelector(`textarea[name="mobile"]`);
 let currentElement, currentTextElement, cursorPosition, cursorCoordinate;
+
+function addOverlay(element) {
+  element.addEventListener(`click`, ({ target, clientX: ox, clientY: oy }) => {
+    placeCursor(target, ox, oy);
+  });
+  textArea.addEventListener(`keydown`, handleKey);
+  textArea.addEventListener(`click`, (evt) => {
+    currentElement.dispatchEvent(new evt.constructor(evt.type, evt));
+  });
+  const { left: x, top: y } = element.getBoundingClientRect();
+  setDims(textArea, x, y, element.clientWidth, element.clientHeight);
+}
+
+function setDims(e, x, y, w, h) {
+  Object.assign(e.style, {
+    top: y + px,
+    left: x + px,
+    width: w + px,
+    height: h + px,
+  });
+}
 
 export function makeEditable(element) {
   currentElement = element;
   currentTextElement = Array.from(element.childNodes).find(
     (n) => n.nodeType === 3
   );
+  addOverlay(element);
   updateCursor(0);
 }
 
@@ -153,7 +176,10 @@ function del() {
     s.substring(0, cursorPosition) + s.substring(cursorPosition + 1);
 }
 
-document.addEventListener(`keydown`, (evt) => {
+/**
+ * The most important function
+ */
+function handleKey(evt) {
   const { key, shiftKey, altKey, ctrlKey, metaKey } = evt;
   const special = altKey || ctrlKey || metaKey;
 
@@ -201,13 +227,19 @@ document.addEventListener(`keydown`, (evt) => {
 
   // normal letters
   else if (!special && key.length === 1 && key.codePointAt(0) > 0x19) {
+    evt.preventDefault();
     const s = currentTextElement.textContent;
     currentTextElement.textContent =
       s.substring(0, cursorPosition) + key + s.substring(cursorPosition);
     incrementCursor();
   }
-});
 
-document.addEventListener(`click`, ({ target, clientX: ox, clientY: oy }) => {
-  placeCursor(target, ox, oy);
-});
+  const { left: x, top: y } = currentElement.getBoundingClientRect();
+  setDims(
+    textArea,
+    x,
+    y,
+    currentElement.clientWidth,
+    currentElement.clientHeight
+  );
+}
