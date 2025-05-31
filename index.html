@@ -75,6 +75,21 @@
     cursor's x/y coordinate, and then fake a click for the same x, but a y value
     that has the line height subtracted or added.
   </p>
+  <h2>What else?</h2>
+  <p>
+    Text selection. Because this is not an OS-level text element, I'm basically
+    reimplementing everything from almost-scratch. So for a day one, this'll do
+    but it's going to need all the common things like text selection with their
+    keyboard or mouse, and really, touch. Because that's a thing, and you should
+    support touch events. I currently don't. That's a failing on my part.
+  </p>
+  <p>
+    Anyway, "everything else" aside, the big ones are text selection and
+    making the code aware of "other elements" so we can do standard word processor
+    things like bold or italics. Making the cursor move across element boundaries
+    is pretty important. And spaces. HTML has a fun way to deal with white space
+    and it's not the same as what people expect while writing so... we'll get there.
+  </p>
 </body>
 
 <!-- we stick our script after our HTML document -->
