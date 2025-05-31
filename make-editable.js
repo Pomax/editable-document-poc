@@ -2,13 +2,19 @@ const px = `px`;
 const cursor = document.getElementById(`cursor`);
 const textArea = document.querySelector(`textarea[name="mobile"]`);
 let currentElement, currentTextElement, cursorPosition, cursorCoordinate;
+const forwards = [`touchstart`, `touchend`, `click`];
 
 function addOverlay(element) {
   element.addEventListener(`click`, ({ target, clientX: ox, clientY: oy }) => {
     placeCursor(target, ox, oy);
   });
-  textArea.addEventListener(`click`, (evt) => {
-    currentElement.dispatchEvent(new evt.constructor(evt.type, evt));
+  forwards.forEach((type) => {
+    textArea.addEventListener(type, (evt) => {
+      currentElement.dispatchEvent(new evt.constructor(evt.type, evt));
+    });
+  });
+  textArea.addEventListener(`keyup`, (evt) => {
+    handleKey(evt);
   });
   const { left: x, top: y } = element.getBoundingClientRect();
   setDims(textArea, x, y, element.clientWidth, element.clientHeight);
@@ -242,5 +248,3 @@ function handleKey(evt) {
     currentElement.clientHeight
   );
 }
-
-document.addEventListener(`keydown`, handleKey);
