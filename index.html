@@ -11,13 +11,23 @@
 <body>
   <h1>Creating an editable paragraph</h1>
   <main>
-    <div id="cursor"></div>
-    <textarea name="mobile"></textarea>
+    <p>
+      This is a text, and the idea is that we can put a cursor in here, even if
+      <strong>some content has additional markup</strong>, whether that's
+      single-level nested or <strong><em>multiple levels down</em></strong> and
+      then just edit content in place, true
+      <a href="https://en.wikipedia.org/wiki/WYSIWYG">WYSIWYG</a> style. This
+      relies on the <code>contenteditable</code> HTML attribute, which lets us
+      do a bunch of "what is the caret currently in?" checks, while also working
+      on both desktop and mobile. The one thing it <em>does not</em> need,
+      though, is a parallel textarea for tracking what you're typing. The
+      browser already knows how to do that.
+    </p>
 
-    <p tabindex="0">
-      This is a text, and the idea is that we can put a cursor in here without
-      relying on "contenteditable", instead working directly in the paragraph
-      itself.
+    <p>
+      And of course, secretly that functionality works
+      <strong>everywhere</strong> on this page. You click a thing, it becomes
+      editable, even if the HTML source code didn't say it was.
     </p>
   </main>
 

@@ -4,34 +4,34 @@
   * {
     font-size: 1rem !important;
   }
-
-  #cursor {
-    position: absolute;
-    width: 1px;
-    height: 1em;
-    background: black;
-    animation: 1s cursor-blink linear forwards infinite;
-    animation-timing-function: steps(3, end);
-  }
-
-  main {
-    p {
-      width: 12em;
-      border: 1px solid black;
-      margin: 1em;
-      padding: 1em;
+}
+html {
+  body {
+    #cursor {
+      position: absolute;
+      width: 1px;
+      height: 1em;
+      background: black;
+      animation: 1s cursor-blink linear forwards infinite;
+      animation-timing-function: steps(3, end);
     }
 
-    textarea {
-      font-family: inherit;
-      font-size: inherit;
+    main {
+      p {
+        width: 80%;
+        margin: 1rem auto;
+        border: 1px solid black;
+        padding: 1rem;
+      }
+    }
+
+    div.matcher {
       position: absolute;
       width: 0;
       height: 0;
       background: #f00;
       opacity: 0.3;
-      margin: 0;
-      padding: 0;
+      pointer-events: none;
     }
   }
 }
