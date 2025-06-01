@@ -13,9 +13,20 @@ function addOverlay(element) {
       currentElement.dispatchEvent(new evt.constructor(evt.type, evt));
     });
   });
-  textArea.addEventListener(`input`, (evt) => {
+
+  // This is just absolute bullshit, what the genuine fuck
+  let l = 0,
+    d = 0;
+  textArea.addEventListener(`beforeinput`, (evt) => {
+    l = textArea.value.length;
     currentTextElement.textContent = textArea.value;
   });
+  textArea.addEventListener(`input`, (evt) => {
+    d = textArea.value.length - l;
+    currentTextElement.textContent = textArea.value;
+    updateCursor(cursorPosition + d);
+  });
+
   textArea.addEventListener(`keydown`, (evt) => {
     handleKey(evt);
   });
@@ -26,7 +37,7 @@ function addOverlay(element) {
   Object.assign(textArea.style, {
     boxSizing: `border-box`,
     padding: getComputedStyle(element).getPropertyValue(`padding`),
-  })
+  });
 }
 
 function setDims(e, x, y, w, h) {
