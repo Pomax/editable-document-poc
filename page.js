@@ -9,15 +9,17 @@ document.body.append(letterMatch);
 const p = document.querySelector(`main p`);
 p.innerHTML = p.innerHTML.replace(/\s+/g, ` `).trim();
 
+let atStart = false;
+let atEnd = false;
 let currentRoot = undefined;
 let currentElement = undefined;
 let currentTextNode = undefined;
 
 const Keys = {
-  TOP: `ArrowTop`,
-  RIGHT: `ArrowRight`,
-  BOTTOM: `ArrowBottom`,
-  LEFT: `ArrowLeft`,
+  up: `ArrowUp`,
+  down: `ArrowDown`,
+  left: `ArrowLeft`,
+  right: `ArrowRight`,
 };
 
 const Editable = [`p`, `h1`, `h2`, `h3`, `ul`, `ol`];
@@ -31,7 +33,12 @@ for (const tag of Editable) {
 document.addEventListener(`click`, (evt) => {
   const local = (currentRoot = evt.target.closest(Editable.join(`,`)));
   if (!local) return;
+  switchTo(local);
+});
+
+function switchTo(local, cursorAtEnd = false) {
   local.setAttribute(`contenteditable`, `true`);
+  if (cursorAtEnd) moveCursorToEnd(local);
   local.focus();
   const onBlur = () => {
     local.removeAttribute(`contenteditable`);
@@ -40,24 +47,106 @@ document.addEventListener(`click`, (evt) => {
   };
   local.addEventListener(`blur`, onBlur);
   findCursor({ target: local });
-});
+}
+
+let prevZeroes = false;
 
 document.addEventListener(`keydown`, (evt) => {
-  const { caret, index } = findCursor({ target: currentRoot });
-  if (caret === 0 && index === 0) {
-    console.log(`move to previous element`);
+  const found = findCursor({ target: currentRoot });
+  if (!found) return;
+
+  const { key } = evt;
+  const { caret, index } = found;
+  console.log(`keydown`, caret, index, prevZeroes);
+
+  if ((key === Keys.left || key === Keys.up) && caret === 0 && index === 0) {
+    if (prevZeroes === false) prevZeroes = true;
+    else {
+      atEnd = true;
+      moveToPrevious();
+    }
+  } else {
+    prevZeroes = false;
   }
-  if (caret > 0 && index === -1) {
-    console.log(`move to next element`);
+
+  if ((key === Keys.right || key === Keys.down) && caret > 0 && index === -1) {
+    moveToNext();
   }
 });
 
 document.addEventListener(`keyup`, (evt) => {
-  const { caret, index } = findCursor({ target: currentRoot });
-  if (caret > 0 && index === -1) {
-    console.log(`move to next element`);
+  const found = findCursor({ target: currentRoot });
+  if (!found) return;
+
+  const { key } = evt;
+  const { caret, index } = found;
+
+  console.log(`keyup`, caret, index, prevZeroes);
+
+  if (key === Keys.down || key === Keys.right) {
+    if (caret > 0 && index === -1) {
+      moveToNext();
+    }
+  }
+
+  if (key === Keys.up || key === Keys.left) {
+    if (caret === 0 && index === 0 && prevZeroes) {
+      moveToPrevious();
+    }
   }
 });
+
+function findNextRelativeTo(parent) {
+  let target = parent.nextElementSibling;
+  if (target) return target;
+  while (!target && parent !== document.body) {
+    parent = parent.parentNode;
+    target = parent.nextElementSibling;
+  }
+  return target;
+}
+
+function findPreviousRelativeTo(parent) {
+  let target = parent.previousElementSibling;
+  if (target) return target;
+  while (!target && parent !== document.body) {
+    parent = parent.parentNode;
+    target = parent.previousElementSibling;
+  }
+  return target;
+}
+
+function moveToPrevious() {
+  const target = findPreviousRelativeTo(currentRoot);
+  if (target) {
+    console.log(`moving focus to`, target);
+    currentRoot = target;
+    const textNodes = getTextNodesFor(target);
+    currentTextNode = textNodes.at(-1);
+    currentElement = currentTextNode.parentNode;
+    switchTo(target, true);
+  }
+}
+
+function moveToNext() {
+  const target = findNextRelativeTo(currentRoot);
+  if (target) {
+    console.log(`moving focus to`, target);
+    currentRoot = target;
+    const textNodes = getTextNodesFor(target);
+    currentTextNode = textNodes[0];
+    currentElement = currentTextNode.parentNode;
+    switchTo(target);
+  }
+}
+function moveCursorToEnd(element) {
+  const range = document.createRange();
+  const selection = window.getSelection();
+  range.setStart(element, element.childNodes.length);
+  range.collapse(true);
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
 
 function getTextNodesFor(e, nodes = [], node = {}) {
   const walker = document.createTreeWalker(e, 4, null, false);
@@ -74,6 +163,8 @@ function findCursor({ target, clientX: ox, clientY: oy }) {
 
   // Get the "global" caret position
   const selection = window.getSelection();
+  if (!selection.anchorNode) return;
+
   const range = selection.getRangeAt(0);
   const clonedRange = range.cloneRange();
   clonedRange.selectNodeContents(currentRoot);
