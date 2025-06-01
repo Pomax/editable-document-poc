@@ -4,8 +4,6 @@ const textArea = document.querySelector(`textarea[name="mobile"]`);
 let currentElement, currentTextElement, cursorPosition, cursorCoordinate;
 const forwards = [`touchstart`, `touchend`, `click`];
 
-const debug = document.getElementById(`debug`);
-
 function addOverlay(element) {
   element.addEventListener(`click`, ({ target, clientX: ox, clientY: oy }) => {
     placeCursor(target, ox, oy);
@@ -15,16 +13,20 @@ function addOverlay(element) {
       currentElement.dispatchEvent(new evt.constructor(evt.type, evt));
     });
   });
-  textArea.addEventListener(`keydown`, (evt) => {
-    debug.textContent = `down: ` + evt.key;
+  textArea.addEventListener(`input`, (evt) => {
+    currentTextElement.textContent = textArea.value;
   });
-  textArea.addEventListener(`keyup`, (evt) => {
-    debug.textContent += `, up: ` + evt.key;
+  textArea.addEventListener(`keydown`, (evt) => {
     handleKey(evt);
   });
   const { left: x, top: y } = element.getBoundingClientRect();
   setDims(textArea, x, y, element.clientWidth, element.clientHeight);
-  textArea.value = ``;
+  textArea.value = currentTextElement.textContent;
+
+  Object.assign(textArea.style, {
+    boxSizing: `border-box`,
+    padding: getComputedStyle(element).getPropertyValue(`padding`),
+  })
 }
 
 function setDims(e, x, y, w, h) {
@@ -52,6 +54,8 @@ export function makeEditable(element) {
  */
 function updateCursor(pos = cursorPosition) {
   cursorPosition = pos;
+  textArea.selectionStart = cursorPosition;
+  textArea.selectionEnd = cursorPosition;
 
   const { textContent: text } = currentTextElement;
   const atEnd = cursorPosition >= text.length;
@@ -237,6 +241,7 @@ function handleKey(evt) {
     del();
   }
 
+  /*
   // normal letters
   else if (!special && key.length === 1 && key.codePointAt(0) > 0x19) {
     evt.preventDefault();
@@ -245,6 +250,7 @@ function handleKey(evt) {
       s.substring(0, cursorPosition) + key + s.substring(cursorPosition);
     incrementCursor();
   }
+  */
 
   const { left: x, top: y } = currentElement.getBoundingClientRect();
   setDims(
