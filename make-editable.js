@@ -15,12 +15,12 @@ function addOverlay(element) {
       currentElement.dispatchEvent(new evt.constructor(evt.type, evt));
     });
   });
-  textArea.addEventListener(`keyup`, (evt) => {
-    handleKey(evt);
+  textArea.addEventListener(`keydown`, (evt) => {
+    debug.textContent = `down: ` + evt.key;
   });
-  textArea.addEventListener(`input`, (evt) => {
-    debug.textContent = `input: ` + textArea.value;
-    textArea.value = ``;
+  textArea.addEventListener(`keyup`, (evt) => {
+    debug.textContent += `, up: ` + evt.key;
+    handleKey(evt);
   });
   const { left: x, top: y } = element.getBoundingClientRect();
   setDims(textArea, x, y, element.clientWidth, element.clientHeight);
