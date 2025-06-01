@@ -39,7 +39,7 @@ document.addEventListener(`click`, (evt) => {
     for (const e of [blockMatch, letterMatch]) setDims(e, 0, 0, 0, 0);
   };
   local.addEventListener(`blur`, onBlur);
-  findCursor(evt);
+  findCursor({ target: local });
 });
 
 document.addEventListener(`keydown`, (evt) => {
