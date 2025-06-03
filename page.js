@@ -10,10 +10,12 @@ const Keys = {
   down: `ArrowDown`,
   left: `ArrowLeft`,
   right: `ArrowRight`,
+  backspace: `Backspace`,
+  delete: `Delete`,
 };
 
 // Directly editable elements "root" elements.
-const Editable = [`p`, `h1`, `h2`, `h3`, `ul`, `ol`];
+const Editable = [`p`, `h1`, `h2`, `h3`, `h4`, `ul`, `ol`];
 
 // Alements where leading and trailing white can be safely removed.
 const Trimmable = [`main`, `header`, `div`, `section`, `li`];
@@ -45,12 +47,24 @@ document.addEventListener(`touchstart`, (evt) => {
   findCursor();
 });
 
-document.addEventListener(`keydown`, (evt) => {
+document.addEventListener(`keydown`, ({ key }) => {
   findCursor();
 });
 
-document.addEventListener(`keyup`, (evt) => {
+document.addEventListener(`keyup`, ({ key }) => {
   findCursor();
+
+  if (key === Keys.backspace || key === Keys.delete) {
+    // check that next sibling is not a text node
+    const next = currentTextNode.nextSibling;
+    if (next?.nodeType === 3) {
+      console.log(`we need to merge forward`);
+      const L = currentTextNode.textContent.length;
+      currentTextNode.textContent += next.textContent;
+      currentElement.removeChild(next);
+      setCursor(currentTextNode, L);
+    }
+  }
 });
 
 /**
@@ -152,20 +166,35 @@ function setContextMenu(blockElement) {
   if (tag.match(/h\d/)) {
     setDims(options, x, `${y}px - 2em`, w, `2em`);
     options.innerHTML = `
-      <button>h1</button>
-      <button>h2</button>
-      <button>h3</button>
-      <button>h4</button>
+      <button id="h1">h1</button>
+      <button id="h2">h2</button>
+      <button id="h3">h3</button>
+      <button id="h4">h4</button>
+      <button id="p">p</button>
     `;
+    const changeTag = (e, newtag) => {
+      const tag = e.tagName.toLowerCase();
+      currentElement.outerHTML = currentElement.outerHTML
+        .replace(`<${tag}`, `<${newtag}`)
+        .replace(`</${tag}`, `</${newtag}`);
+    };
+    [`h1`, `h2`, `h3`, `h4`, `p`].forEach((tag) => {
+      options.querySelector(`#${tag}`).addEventListener(`click`, () => {
+        changeTag(currentElement, tag);
+        blockElement = currentElement.closest(Editable.join(`,`));
+        findCursor();
+      });
+    });
   } else if ([`p`, `ul`, `ol`].includes(blockTag)) {
     setDims(options, x, `${y}px - 2em`, w, `2em`);
     options.innerHTML = `
       <button id="btn-strong">strong</button>
-      <button>emphasis</button>
-      <button>code</button>
-      <button>link</button>
+      <button disabled>emphasis</button>
+      <button disabled>code</button>
+      <button disabled>link</button>
     `;
-    options.querySelector(`#btn-strong`).addEventListener(`click`, () => {
+    options.querySelector(`#btn-strong`).addEventListener(`click`, (evt) => {
+      evt.preventDefault();
       makeSelection(`strong`, tag);
     });
   } else {
@@ -185,27 +214,46 @@ function setDims(e, x = 0, y = 0, w = 0, h = 0) {
 
 function makeSelection(tag, currentTag) {
   const selection = window.getSelection();
+  console.log(selection);
   const { anchorOffset: pos } = selection;
   const find = selection.toString();
+
+  // are we bolding text?
   if (currentTag !== tag) {
     const before = document.createTextNode(
       currentTextNode.textContent.substring(0, pos)
     );
+
     const element = document.createElement(tag);
     element.textContent = currentTextNode.textContent.substring(
       pos,
       pos + find.length
     );
+
     currentElement.insertBefore(element, currentTextNode);
     currentElement.insertBefore(before, element);
     currentTextNode.textContent = currentTextNode.textContent.substring(
       pos + find.length
     );
 
+    // make sure to put the cursor back
     const range = document.createRange();
     range.setStart(element.childNodes[0], 0);
     range.setEnd(element.childNodes[0], find.length);
     selection.removeAllRanges();
     selection.addRange(range);
   }
+
+  // if not, unbold and merge the text nodes
 }
+
+function setCursor(element = currentTextNode, pos = 0) {
+  const selection = window.getSelection();
+  const range = document.createRange();
+  range.setStart(element, pos);
+  selection.removeAllRanges();
+  selection.addRange(range);
+  findCursor();
+}
+
+// TODO: merge consecutive text elements during edits (e.g. we backspace an element out of existence)
