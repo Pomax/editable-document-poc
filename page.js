@@ -32,6 +32,11 @@ for (const tag of Editable.concat(Trimmable)) {
   document.body.append(div);
 });
 
+// Set up our edit options container
+const options = document.createElement(`div`);
+options.classList.add(`edit-options`);
+document.body.append(options);
+
 document.addEventListener(`click`, (evt) => {
   findCursor();
 });
@@ -116,8 +121,6 @@ function highLight(textNode, s, first, last, range) {
     range.setEnd(textNode, last);
     const { x, y, width: w, height: h } = range.getBoundingClientRect();
     setDims(blockMatch, x, y, w, h);
-
-    setContextMenu(x, y, w, h);
   }
 
   setLetterMatch: {
@@ -126,30 +129,83 @@ function highLight(textNode, s, first, last, range) {
     const { x, y, width: w, height: h } = range.getBoundingClientRect();
     setDims(letterMatch, x, y, w, h);
   }
+
+  setContextMenu: {
+    setContextMenu(currentElement.closest(Editable.join(`,`)));
+  }
 }
 
-function setDims(e, x, y, w, h, px = `px`) {
+function setContextMenu(blockElement) {
+  if (!currentElement) return;
+  let { x, y, width: w, height: h } = blockElement.getBoundingClientRect();
+  if (y < 30) y = h + y + 30;
+
+  if (options.element === currentElement) return;
+
+  options.element = currentElement;
+  options.innerHTML = ``;
+  setDims(options);
+
+  const tag = currentElement.tagName.toLowerCase();
+  const blockTag = blockElement.tagName.toLowerCase();
+
+  if (tag.match(/h\d/)) {
+    setDims(options, x, `${y}px - 2em`, w, `2em`);
+    options.innerHTML = `
+      <button>h1</button>
+      <button>h2</button>
+      <button>h3</button>
+      <button>h4</button>
+    `;
+  } else if ([`p`, `ul`, `ol`].includes(blockTag)) {
+    setDims(options, x, `${y}px - 2em`, w, `2em`);
+    options.innerHTML = `
+      <button id="btn-strong">strong</button>
+      <button>emphasis</button>
+      <button>code</button>
+      <button>link</button>
+    `;
+    options.querySelector(`#btn-strong`).addEventListener(`click`, () => {
+      makeSelection(`strong`, tag);
+    });
+  } else {
+    console.log(`not heading: ${blockTag} > ${tag}`);
+  }
+}
+
+function setDims(e, x = 0, y = 0, w = 0, h = 0) {
+  const val = (v) => (typeof v === `number` ? v + `px` : v);
   Object.assign(e.style, {
-    top: window.scrollY + y + px,
-    left: window.scrollX + x + px,
-    width: w + px,
-    height: h + px,
+    top: `calc(${window.scrollY}px + ${val(y)})`,
+    left: `calc(${window.scrollX}px + ${val(x)})`,
+    width: val(w),
+    height: val(h),
   });
 }
 
-// ----------------------------
+function makeSelection(tag, currentTag) {
+  const selection = window.getSelection();
+  const { anchorOffset: pos } = selection;
+  const find = selection.toString();
+  if (currentTag !== tag) {
+    const before = document.createTextNode(
+      currentTextNode.textContent.substring(0, pos)
+    );
+    const element = document.createElement(tag);
+    element.textContent = currentTextNode.textContent.substring(
+      pos,
+      pos + find.length
+    );
+    currentElement.insertBefore(element, currentTextNode);
+    currentElement.insertBefore(before, element);
+    currentTextNode.textContent = currentTextNode.textContent.substring(
+      pos + find.length
+    );
 
-function setContextMenu(x, y, w, h) {
-  // TODO: FIXME: continue here
-  options.innerHTML = ``;
-  if (currentElement.tagName.match(/H\d/)) {
-    console.log(`heading`);
-    setDims(options, x, y - 30, innerWidth, 25);
-    options.innerHTML = `
-    <button>h1</button>
-    <button>h2</button>
-    <button>h3</button>
-    <button>h4</button>
-    `;
+    const range = document.createRange();
+    range.setStart(element.childNodes[0], 0);
+    range.setEnd(element.childNodes[0], find.length);
+    selection.removeAllRanges();
+    selection.addRange(range);
   }
 }

@@ -37,6 +37,14 @@ html {
         border-bottom: 3px solid red;
       }
     }
+
+    div.edit-options {
+      position: absolute;
+      width: 0;
+      height: 0;
+      background: #02ff78;
+      color: white;
+    }
   }
 }
 
