@@ -1,19 +1,9 @@
-const blockMatch = document.createElement(`div`);
-blockMatch.classList.add(`matcher`);
-document.body.append(blockMatch);
+const currentRoot = document.body;
+currentRoot.setAttribute(`contenteditable`, `true`);
 
-const letterMatch = document.createElement(`div`);
-letterMatch.classList.add(`matcher`);
-document.body.append(letterMatch);
-
-const p = document.querySelector(`main p`);
-p.innerHTML = p.innerHTML.replace(/\s+/g, ` `).trim();
-
-let atStart = false;
-let atEnd = false;
-let currentRoot = undefined;
 let currentElement = undefined;
 let currentTextNode = undefined;
+let prevCursor = { index: -1, caret: -1 };
 
 const Keys = {
   up: `ArrowUp`,
@@ -22,81 +12,58 @@ const Keys = {
   right: `ArrowRight`,
 };
 
+// Directly editable elements "root" elements.
 const Editable = [`p`, `h1`, `h2`, `h3`, `ul`, `ol`];
 
-for (const tag of Editable) {
+// Alements where leading and trailing white can be safely removed.
+const Trimmable = [`main`, `header`, `div`, `section`, `li`];
+
+// Clear out problematic whitespace before we begin.
+for (const tag of Editable.concat(Trimmable)) {
   document
     .querySelectorAll(tag)
     .forEach((e) => (e.innerHTML = e.innerHTML.trim()));
 }
 
-document.addEventListener(`click`, (evt) => {
-  const local = (currentRoot = evt.target.closest(Editable.join(`,`)));
-  if (!local) return;
-  switchTo(local);
+// Set up our block and letter marker overlays
+[`blockMatch`, `letterMatch`].forEach((name) => {
+  const div = (globalThis[name] = document.createElement(`div`));
+  div.classList.add(`matcher`);
+  document.body.append(div);
 });
 
-function switchTo(local, cursorAtEnd = false) {
-  local.setAttribute(`contenteditable`, `true`);
-  if (cursorAtEnd) moveCursorToEnd(local);
-  local.focus();
-  const onBlur = () => {
-    local.removeAttribute(`contenteditable`);
-    local.removeEventListener(`blur`, onBlur);
-    for (const e of [blockMatch, letterMatch]) setDims(e, 0, 0, 0, 0);
-  };
-  local.addEventListener(`blur`, onBlur);
-  findCursor({ target: local });
-}
+document.addEventListener(`click`, (evt) => {
+  findCursor();
+});
 
-let prevZeroes = false;
+document.addEventListener(`touchstart`, (evt) => {
+  findCursor();
+});
 
 document.addEventListener(`keydown`, (evt) => {
-  const found = findCursor({ target: currentRoot });
-  if (!found) return;
-
-  const { key } = evt;
-  const { caret, index } = found;
-  console.log(`keydown`, caret, index, prevZeroes);
-
-  if ((key === Keys.left || key === Keys.up) && caret === 0 && index === 0) {
-    if (prevZeroes === false) prevZeroes = true;
-    else {
-      atEnd = true;
-      moveToPrevious();
-    }
-  } else {
-    prevZeroes = false;
-  }
-
-  if ((key === Keys.right || key === Keys.down) && caret > 0 && index === -1) {
-    moveToNext();
-  }
+  findCursor();
 });
 
 document.addEventListener(`keyup`, (evt) => {
-  const found = findCursor({ target: currentRoot });
-  if (!found) return;
-
-  const { key } = evt;
-  const { caret, index } = found;
-
-  console.log(`keyup`, caret, index, prevZeroes);
-
-  if (key === Keys.down || key === Keys.right) {
-    if (caret > 0 && index === -1) {
-      moveToNext();
-    }
-  }
-
-  if (key === Keys.up || key === Keys.left) {
-    if (caret === 0 && index === 0 && prevZeroes) {
-      moveToPrevious();
-    }
-  }
+  findCursor();
 });
 
-function findNextRelativeTo(parent) {
+// ------------------------------------------------------
+
+function moveToNext() {
+  const target = findNextDOMElement();
+  if (!target) return;
+  currentTextNode = getTextNode(0);
+  currentElement = currentTextNode.parentNode;
+  console.log(`move to next`, {
+    currentRoot,
+    currentElement,
+    currentTextNode,
+  });
+  makeEditable(target);
+}
+
+function findNextDOMElement(parent = currentRoot) {
   let target = parent.nextElementSibling;
   if (target) return target;
   while (!target && parent !== document.body) {
@@ -106,7 +73,21 @@ function findNextRelativeTo(parent) {
   return target;
 }
 
-function findPreviousRelativeTo(parent) {
+function moveToPrevious() {
+  const target = findPreviousDOMElement();
+  if (!target) return;
+  currentRoot = target;
+  currentTextNode = getTextNode(-1);
+  currentElement = currentTextNode.parentNode;
+  console.log(`move to previous`, {
+    currentRoot,
+    currentElement,
+    currentTextNode,
+  });
+  makeEditable(target, true);
+}
+
+function findPreviousDOMElement(parent = currentRoot) {
   let target = parent.previousElementSibling;
   if (target) return target;
   while (!target && parent !== document.body) {
@@ -116,29 +97,19 @@ function findPreviousRelativeTo(parent) {
   return target;
 }
 
-function moveToPrevious() {
-  const target = findPreviousRelativeTo(currentRoot);
-  if (target) {
-    console.log(`moving focus to`, target);
-    currentRoot = target;
-    const textNodes = getTextNodesFor(target);
-    currentTextNode = textNodes.at(-1);
-    currentElement = currentTextNode.parentNode;
-    switchTo(target, true);
-  }
+function makeEditable(target = currentRoot, cursorAtEnd = false) {
+  target.setAttribute(`contenteditable`, `true`);
+  if (cursorAtEnd) moveCursorToEnd(target);
+  target.focus();
+  const onBlur = () => {
+    target.removeAttribute(`contenteditable`);
+    target.removeEventListener(`blur`, onBlur);
+    for (const e of [blockMatch, letterMatch]) setDims(e, 0, 0, 0, 0);
+  };
+  target.addEventListener(`blur`, onBlur);
+  findCursor();
 }
 
-function moveToNext() {
-  const target = findNextRelativeTo(currentRoot);
-  if (target) {
-    console.log(`moving focus to`, target);
-    currentRoot = target;
-    const textNodes = getTextNodesFor(target);
-    currentTextNode = textNodes[0];
-    currentElement = currentTextNode.parentNode;
-    switchTo(target);
-  }
-}
 function moveCursorToEnd(element) {
   const range = document.createRange();
   const selection = window.getSelection();
@@ -148,35 +119,44 @@ function moveCursorToEnd(element) {
   selection.addRange(range);
 }
 
-function getTextNodesFor(e, nodes = [], node = {}) {
-  const walker = document.createTreeWalker(e, 4, null, false);
+/**
+ * Find all text nodes contained by some element
+ */
+function getTextNodes(nodes = [], node = {}) {
+  const walker = document.createTreeWalker(currentRoot, 4, null, false);
   while ((node = walker.nextNode())) nodes.push(node);
   return nodes;
 }
 
-function findCursor({ target, clientX: ox, clientY: oy }) {
-  // FIXME: the only way to make sure we highlight the
-  // right thing is to make sure we track "where we just
-  // were" and "where we are now", so that we can tell
-  // whether or not we're transitioning to a different
-  // element or not.
+function getTextNode(idx) {
+  return getTextNodes().at(idx);
+}
 
+/**
+ *
+ * @returns
+ */
+function findCursor() {
   // Get the "global" caret position
   const selection = window.getSelection();
   if (!selection.anchorNode) return;
 
+  // Convert that into a local caret position relative
+  // the the currentRoot element:
   const range = selection.getRangeAt(0);
   const clonedRange = range.cloneRange();
   clonedRange.selectNodeContents(currentRoot);
   clonedRange.setEnd(range.endContainer, range.endOffset);
   const caret = clonedRange.toString().length;
 
+  // Now that we have the caret in terms of its position
+  // inside the currentRoot element, find the text node
+  // the caret is actually in.
   let index = -1;
   let tracked = 0;
-
-  for (let node of getTextNodesFor(target)) {
+  for (const node of getTextNodes()) {
     const L = node.textContent.length;
-    if (tracked + L > caret) {
+    if (tracked + L >= caret) {
       currentTextNode = node;
       currentElement = node.parentNode;
       index = caret - tracked;
@@ -184,11 +164,32 @@ function findCursor({ target, clientX: ox, clientY: oy }) {
     } else tracked += L;
   }
 
-  if (index >= 0) highLight(currentTextNode, index);
+  /*
+  // what did we find?
+  console.log({
+    caret,
+    tracked,
+    index,
+    currentRoot,
+    currentElement,
+    currentTextNode,
+  });
+  */
+
+  // highlight the cursor
+  highLight(currentTextNode, index);
 
   return { caret, index };
 }
 
+/**
+ *
+ * @param {*} textNode
+ * @param {*} s
+ * @param {*} first
+ * @param {*} last
+ * @param {*} range
+ */
 function highLight(textNode, s, first, last, range) {
   first ??= 0;
   last ??= textNode.textContent.length;
