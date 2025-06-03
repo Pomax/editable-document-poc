@@ -29,9 +29,13 @@ html {
       position: absolute;
       width: 0;
       height: 0;
-      background: #f00;
-      opacity: 0.3;
+      background: #00ff7030;
       pointer-events: none;
+      &:nth-of-type(2) {
+        background: transparent;
+        border: none;
+        border-bottom: 3px solid red;
+      }
     }
   }
 }

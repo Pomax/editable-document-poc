@@ -48,93 +48,8 @@ document.addEventListener(`keyup`, (evt) => {
   findCursor();
 });
 
-// ------------------------------------------------------
-
-function moveToNext() {
-  const target = findNextDOMElement();
-  if (!target) return;
-  currentTextNode = getTextNode(0);
-  currentElement = currentTextNode.parentNode;
-  console.log(`move to next`, {
-    currentRoot,
-    currentElement,
-    currentTextNode,
-  });
-  makeEditable(target);
-}
-
-function findNextDOMElement(parent = currentRoot) {
-  let target = parent.nextElementSibling;
-  if (target) return target;
-  while (!target && parent !== document.body) {
-    parent = parent.parentNode;
-    target = parent.nextElementSibling;
-  }
-  return target;
-}
-
-function moveToPrevious() {
-  const target = findPreviousDOMElement();
-  if (!target) return;
-  currentRoot = target;
-  currentTextNode = getTextNode(-1);
-  currentElement = currentTextNode.parentNode;
-  console.log(`move to previous`, {
-    currentRoot,
-    currentElement,
-    currentTextNode,
-  });
-  makeEditable(target, true);
-}
-
-function findPreviousDOMElement(parent = currentRoot) {
-  let target = parent.previousElementSibling;
-  if (target) return target;
-  while (!target && parent !== document.body) {
-    parent = parent.parentNode;
-    target = parent.previousElementSibling;
-  }
-  return target;
-}
-
-function makeEditable(target = currentRoot, cursorAtEnd = false) {
-  target.setAttribute(`contenteditable`, `true`);
-  if (cursorAtEnd) moveCursorToEnd(target);
-  target.focus();
-  const onBlur = () => {
-    target.removeAttribute(`contenteditable`);
-    target.removeEventListener(`blur`, onBlur);
-    for (const e of [blockMatch, letterMatch]) setDims(e, 0, 0, 0, 0);
-  };
-  target.addEventListener(`blur`, onBlur);
-  findCursor();
-}
-
-function moveCursorToEnd(element) {
-  const range = document.createRange();
-  const selection = window.getSelection();
-  range.setStart(element, element.childNodes.length);
-  range.collapse(true);
-  selection.removeAllRanges();
-  selection.addRange(range);
-}
-
 /**
- * Find all text nodes contained by some element
- */
-function getTextNodes(nodes = [], node = {}) {
-  const walker = document.createTreeWalker(currentRoot, 4, null, false);
-  while ((node = walker.nextNode())) nodes.push(node);
-  return nodes;
-}
-
-function getTextNode(idx) {
-  return getTextNodes().at(idx);
-}
-
-/**
- *
- * @returns
+ * ...
  */
 function findCursor() {
   // Get the "global" caret position
@@ -152,44 +67,45 @@ function findCursor() {
   // Now that we have the caret in terms of its position
   // inside the currentRoot element, find the text node
   // the caret is actually in.
+  let textNodes = getTextNodes();
   let index = -1;
   let tracked = 0;
-  for (const node of getTextNodes()) {
+  for (const node of textNodes) {
     const L = node.textContent.length;
     if (tracked + L >= caret) {
       currentTextNode = node;
-      currentElement = node.parentNode;
       index = caret - tracked;
       break;
     } else tracked += L;
   }
 
-  /*
-  // what did we find?
-  console.log({
-    caret,
-    tracked,
-    index,
-    currentRoot,
-    currentElement,
-    currentTextNode,
-  });
-  */
-
-  // highlight the cursor
-  highLight(currentTextNode, index);
+  // Do we need to "fast forward" to real text because
+  // we landed on some interstitial whitespace instead?
+  if (currentTextNode) {
+    let pos = textNodes.indexOf(currentTextNode);
+    while (currentTextNode && currentTextNode.textContent.trim() === ``) {
+      index -= currentTextNode.textContent.length;
+      currentTextNode = textNodes[++pos];
+    }
+    if (currentTextNode) {
+      currentElement = currentTextNode.parentNode;
+      highLight(currentTextNode, index);
+    }
+  }
 
   return { caret, index };
 }
 
-/**
- *
- * @param {*} textNode
- * @param {*} s
- * @param {*} first
- * @param {*} last
- * @param {*} range
- */
+function getTextNodes(nodes = [], node = {}) {
+  const walker = document.createTreeWalker(currentRoot, 4, null, false);
+  while ((node = walker.nextNode())) nodes.push(node);
+  return nodes;
+}
+
+function getTextNode(idx) {
+  return getTextNodes().at(idx);
+}
+
 function highLight(textNode, s, first, last, range) {
   first ??= 0;
   last ??= textNode.textContent.length;
@@ -200,6 +116,8 @@ function highLight(textNode, s, first, last, range) {
     range.setEnd(textNode, last);
     const { x, y, width: w, height: h } = range.getBoundingClientRect();
     setDims(blockMatch, x, y, w, h);
+
+    setContextMenu(x, y, w, h);
   }
 
   setLetterMatch: {
@@ -217,4 +135,21 @@ function setDims(e, x, y, w, h, px = `px`) {
     width: w + px,
     height: h + px,
   });
+}
+
+// ----------------------------
+
+function setContextMenu(x, y, w, h) {
+  // TODO: FIXME: continue here
+  options.innerHTML = ``;
+  if (currentElement.tagName.match(/H\d/)) {
+    console.log(`heading`);
+    setDims(options, x, y - 30, innerWidth, 25);
+    options.innerHTML = `
+    <button>h1</button>
+    <button>h2</button>
+    <button>h3</button>
+    <button>h4</button>
+    `;
+  }
 }
