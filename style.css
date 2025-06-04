@@ -58,6 +58,13 @@ html {
       position: absolute;
       width: 0;
       height: 0;
+
+      display: flex;
+      justify-content: flex-start;
+      align-items: center;
+      row-gap: 2px;
+      column-gap: 2px;
+
       background: #02ff78;
       color: white;
     }

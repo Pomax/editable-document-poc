@@ -9,7 +9,7 @@
 </head>
 
 <body>
-  <h1>Creating an editable paragraph</h1>
+  <h1>Creating an editable page</h1>
   <main>
     <p>
       This is a text, and the idea is that we can put a cursor in here, even if
@@ -21,13 +21,15 @@
       do a bunch of "what is the caret currently in?" checks, while also working
       on both desktop and mobile. The one thing it <em>does not</em> need,
       though, is a parallel textarea for tracking what you're typing. The
-      browser already knows how to do that.
+      browser already knows how to do that. Although we'll see if that's still
+      true once we add code blocks to the mix. Syntax highlighting makes
+      things... weird.
     </p>
 
     <p>
-      And of course, secretly that functionality works
-      <strong>everywhere</strong> on this page. You click a thing, it becomes
-      editable, even if the HTML source code didn't say it was.
+      And of course, secretly that functionality isn't tied to "these two text
+      boxes", it works <strong>everywhere</strong> on this page. You click a
+      thing, it's editable, even if the HTML source code didn't say it was.
     </p>
   </main>
 
@@ -47,41 +49,45 @@
   <p>
     HTML elements contain text nodes, and text nodes can be turned into text
     ranges with metrics that reflect the browser's rendered page. That means we
-    can keep track of a "cursor" and visualize that with a little div that's 1px
-    wide and a full line high, positioned at "whatever that cursor position's
-    corresponding range selection is". Presto. Cursor.
+    can keep track of a "cursor" and visualize that with a little red underline,
+    while also highlight the "large block" that text is in by tapping into the
+    parent's bounding client rect.
   </p>
 
   <p>
-    Inserting text or breaking up the paragraph then becomes trivial: we just
-    update its textContent, and set the cursor position to whatever now makes
-    sense.
+    So we let the browser do most of the work in terms of editing the cnotent,
+    and we provide controls for switching one type of content into another. this
+    is of course far from perfect because this is just a proof of concept, but
+    it highlights the fact that HTML is pretty uniquely suited to being an
+    editable document format.
   </p>
 
+  <h2>But I can't click on links!</h2>
+
   <p>
-    moving the cursor up and down is satisfyingly simple: we simply track the
-    cursor's x/y coordinate, and then fake a click for the same x, but a y value
-    that has the line height subtracted or added.
+    Sure, but that's only because the entire document is currently editable.
+    Remove the <code>contenteditable</code> attribute on the body, and it's a
+    normal page again.
   </p>
 
   <h2>What's left?</h2>
 
-  <p>
-    Text selection. Because this is not an OS-level text element, I'm basically
-    reimplementing everything from almost-scratch. So for a day one, this'll do
-    but it's going to need all the common things like text selection with their
-    keyboard or mouse, and really, touch. Because that's a thing, and you should
-    support touch events. I currently don't. That's a failing on my part.
-  </p>
-
-  <p>
-    Anyway, "everything else" aside, the big ones are text selection and making
-    the code aware of "other elements" so we can do standard word processor
-    things like bold or italics. Making the cursor move across element
-    boundaries is pretty important. And spaces. HTML has a fun way to deal with
-    white space and it's not the same as what people expect while writing so...
-    we'll get there.
-  </p>
+  <ul>
+    <li>Making the standard WYSIWYG functions work.</li>
+    <li>Adding support for preformatted text blocks ("code blocks")</li>
+    <li>
+      Recording changes as some kind of OT/CRDT that can be rolled/played back.
+    </li>
+    <li>
+      Adding some smarts that lets you send those diffs back to your file system
+      (e.g., "save" would be pretty crucial to have if we want to edit pages)
+    </li>
+    <li>
+      Make this performant (I have some 50k word documents that this should
+      still work with, I don't want "editing the first paragraph" to be fast,
+      but "editing the last paragraph" take half an hour in bolding a word)
+    </li>
+  </ul>
 
   <h2>I have ideas</h2>
 
@@ -90,7 +96,7 @@
     <a href="https://github.com/Pomax/editable-paragraph-element/issues"
       >https://github.com/Pomax/editable-paragraph-element/issues</a
     >
-    is there for ideation.
+    is ready for you to post any ideation you have.
   </p>
 
   <p>

@@ -1,5 +1,6 @@
 const currentRoot = document.body;
-currentRoot.setAttribute(`contenteditable`, `true`);
+currentRoot.contentEditable = true;
+currentRoot.spellcheck = true;
 
 let currentElement = undefined;
 let currentTextNode = undefined;
@@ -40,18 +41,22 @@ options.classList.add(`edit-options`);
 document.body.append(options);
 
 document.addEventListener(`click`, (evt) => {
+  if (currentRoot.contentEditable !== `true`) return;
   findCursor();
 });
 
 document.addEventListener(`touchstart`, (evt) => {
+  if (currentRoot.contentEditable !== `true`) return;
   findCursor();
 });
 
 document.addEventListener(`keydown`, ({ key }) => {
+  if (currentRoot.contentEditable !== `true`) return;
   findCursor();
 });
 
 document.addEventListener(`keyup`, ({ key }) => {
+  if (currentRoot.contentEditable !== `true`) return;
   findCursor();
 
   if (key === Keys.backspace || key === Keys.delete) {
@@ -151,55 +156,13 @@ function highLight(textNode, s, first, last, range) {
 
 function setContextMenu(blockElement) {
   if (!currentElement) return;
+  if (!blockElement) return;
   let { x, y, width: w, height: h } = blockElement.getBoundingClientRect();
   if (y < 30) y = h + y + 30;
 
   if (options.element === currentElement) return;
-
   options.element = currentElement;
-  options.innerHTML = ``;
-  setDims(options);
-
-  const tag = currentElement.tagName.toLowerCase();
-  const blockTag = blockElement.tagName.toLowerCase();
-
-  if (tag.match(/h\d/)) {
-    setDims(options, x, `${y}px - 2em`, w, `2em`);
-    options.innerHTML = `
-      <button id="h1">h1</button>
-      <button id="h2">h2</button>
-      <button id="h3">h3</button>
-      <button id="h4">h4</button>
-      <button id="p">p</button>
-    `;
-    const changeTag = (e, newtag) => {
-      const tag = e.tagName.toLowerCase();
-      currentElement.outerHTML = currentElement.outerHTML
-        .replace(`<${tag}`, `<${newtag}`)
-        .replace(`</${tag}`, `</${newtag}`);
-    };
-    [`h1`, `h2`, `h3`, `h4`, `p`].forEach((tag) => {
-      options.querySelector(`#${tag}`).addEventListener(`click`, () => {
-        changeTag(currentElement, tag);
-        blockElement = currentElement.closest(Editable.join(`,`));
-        findCursor();
-      });
-    });
-  } else if ([`p`, `ul`, `ol`].includes(blockTag)) {
-    setDims(options, x, `${y}px - 2em`, w, `2em`);
-    options.innerHTML = `
-      <button id="btn-strong">strong</button>
-      <button disabled>emphasis</button>
-      <button disabled>code</button>
-      <button disabled>link</button>
-    `;
-    options.querySelector(`#btn-strong`).addEventListener(`click`, (evt) => {
-      evt.preventDefault();
-      makeSelection(`strong`, tag);
-    });
-  } else {
-    console.log(`not heading: ${blockTag} > ${tag}`);
-  }
+  setDims(options, x, `${y}px - 2em`, w, `2em`);
 }
 
 function setDims(e, x = 0, y = 0, w = 0, h = 0) {
@@ -212,12 +175,22 @@ function setDims(e, x = 0, y = 0, w = 0, h = 0) {
   });
 }
 
-function makeSelection(tag, currentTag) {
+function wrapTextIn(tag, currentTag) {
   const selection = window.getSelection();
-  console.log(selection);
-  const { anchorOffset: pos } = selection;
-  const find = selection.toString();
+  const { anchorNode, anchorOffset, focusNode, focusOffset, direction } =
+    selection;
+  let start = { offset: anchorOffset, node: anchorNode };
+  let end = { offset: focusOffset, node: focusNode };
+  if (direction === `backward`) {
+    [start, end] = [end, start];
+  }
+  const text = selection.toString();
+  console.log(start, end, text);
 
+  // Start running through all the nodes involved...
+  const textNodes = getTextNodes();
+
+  /*
   // are we bolding text?
   if (currentTag !== tag) {
     const before = document.createTextNode(
@@ -245,6 +218,7 @@ function makeSelection(tag, currentTag) {
   }
 
   // if not, unbold and merge the text nodes
+  */
 }
 
 function setCursor(element = currentTextNode, pos = 0) {
@@ -256,4 +230,38 @@ function setCursor(element = currentTextNode, pos = 0) {
   findCursor();
 }
 
-// TODO: merge consecutive text elements during edits (e.g. we backspace an element out of existence)
+function changeTag(newtag, e = currentElement) {
+  e = e.closest(Editable.join(`,`));
+  if (!e) return;
+  const tag = e.tagName.toLowerCase();
+  console.log(tag, `->`, newtag);
+  e.outerHTML = e.outerHTML
+    .replace(`<${tag}`, `<${newtag}`)
+    .replace(`</${tag}`, `</${newtag}`);
+}
+
+const labels =
+  `h1, h2, h3, h4, p, ul, ol, code, strong, emphasis, link, img`.split(`, `);
+
+options.innerHTML = labels
+  .map((label) => `<button id="btn-${label}">${label}</button>`)
+  .join(`\n`);
+
+const handleEdit = {
+  h1: () => changeTag(`h1`),
+  h2: () => changeTag(`h2`),
+  h3: () => changeTag(`h3`),
+  h4: () => changeTag(`h4`),
+  p: () => changeTag(`p`),
+  ol: () => changeTag(`ol`),
+  ul: () => changeTag(`ul`),
+  code: () => wrapTextIn(`code`),
+  strong: () => wrapTextIn(`strong`),
+  emphasis: () => wrapTextIn(`em`),
+  link: () => wrapTextIn(`a`),
+  image: () => pickImage(),
+};
+
+labels.forEach((l) => {
+  options.querySelector(`#btn-${l}`).addEventListener(`click`, handleEdit[l]);
+});
