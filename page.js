@@ -315,7 +315,7 @@ const handleEdit = {
 };
 
 labels.forEach((name) => {
-  options.querySelector(`#btn-${name}`).addEventListener(`click`, (evt) => {
+  options.querySelector(`#btn-${name}`).addEventListener(`pointerdown`, (evt) => {
     evt.stopPropagation();
     handleEdit[name]();
   });
