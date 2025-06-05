@@ -68,6 +68,8 @@ html {
 
       background: #02ff78;
       color: white;
+      border: 1px solid black;
+      box-sizing: border-box;
     }
   }
 }

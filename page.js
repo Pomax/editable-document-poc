@@ -167,7 +167,7 @@ function setContextMenu(blockElement) {
 
   if (options.element === currentElement) return;
   options.element = currentElement;
-  setDims(options, x, `${y}px - 2em`, w, `2em`);
+  setDims(options, x, `${y}px - 2.5em`, w, `2em`);
 }
 
 function setDims(e, x = 0, y = 0, w = 0, h = 0) {
@@ -180,7 +180,17 @@ function setDims(e, x = 0, y = 0, w = 0, h = 0) {
   });
 }
 
-function wrapTextIn(tag, currentTag) {
+function changeTag(newtag, e = currentElement) {
+  e = e.closest(Editable.join(`,`));
+  if (!e) return;
+  const tag = e.tagName.toLowerCase();
+  console.log(tag, `->`, newtag);
+  e.outerHTML = e.outerHTML
+    .replace(`<${tag}`, `<${newtag}`)
+    .replace(`</${tag}`, `</${newtag}`);
+}
+
+function wrapTextIn(tag) {
   const selection = window.getSelection();
   const { anchorNode, anchorOffset, focusNode, focusOffset, direction } =
     selection;
@@ -192,7 +202,54 @@ function wrapTextIn(tag, currentTag) {
   const text = selection.toString();
   console.log(start, end, text);
 
-  // Start running through all the nodes involved...
+  const currentTag = currentElement.tagName.toLowerCase();
+
+  if (start.node === end.node) {
+    // simple case, where we're wrapping text inside a single text node,
+    // but we do need to make sure that "bolding bold unbolds", rather
+    // than blindly nesting the same tag inside itself.
+    if (tag === currentTag) {
+      console.log(`we should remove ${tag}`);
+    } else {
+      // Note that we need to trim our wrap text, because we don't want
+      // spurious spaces at the start or end of the wrapping tags.
+      let wrapText = currentTextNode.textContent.substring(
+        start.offset,
+        end.offset
+      );
+
+      const prefix = wrapText.match(/^\s+/);
+      const suffix = wrapText.match(/\s+$/);
+
+      if (prefix ?? suffix) {
+        wrapText = wrapText.trim();
+        start.offset += prefix?.[0].length ?? 0;
+        end.offset -= suffix?.[0].length ?? 0;
+      }
+
+      const before = document.createTextNode(
+        currentTextNode.textContent.substring(0, start.offset)
+      );
+
+      const wrapped = document.createElement(tag);
+      wrapped.textContent = wrapText;
+
+      currentElement.insertBefore(wrapped, currentTextNode);
+      currentElement.insertBefore(before, wrapped);
+      currentTextNode.textContent = currentTextNode.textContent.substring(
+        end.offset
+      );
+
+      // Make sure to put the cursor back
+      const range = document.createRange();
+      range.setStart(currentTextNode, 0);
+      range.setEnd(currentTextNode, 0);
+      selection.removeAllRanges();
+      selection.addRange(range);
+      findCursor();
+    }
+  }
+
   const textNodes = getTextNodes();
 
   /*
@@ -235,16 +292,6 @@ function setCursor(element = currentTextNode, pos = 0) {
   findCursor();
 }
 
-function changeTag(newtag, e = currentElement) {
-  e = e.closest(Editable.join(`,`));
-  if (!e) return;
-  const tag = e.tagName.toLowerCase();
-  console.log(tag, `->`, newtag);
-  e.outerHTML = e.outerHTML
-    .replace(`<${tag}`, `<${newtag}`)
-    .replace(`</${tag}`, `</${newtag}`);
-}
-
 const labels =
   `h1, h2, h3, h4, p, ul, ol, code, strong, emphasis, link, img`.split(`, `);
 
@@ -267,6 +314,9 @@ const handleEdit = {
   image: () => pickImage(),
 };
 
-labels.forEach((l) => {
-  options.querySelector(`#btn-${l}`).addEventListener(`click`, handleEdit[l]);
+labels.forEach((name) => {
+  options.querySelector(`#btn-${name}`).addEventListener(`click`, (evt) => {
+    evt.stopPropagation();
+    handleEdit[name]();
+  });
 });
