@@ -50,12 +50,13 @@
     HTML elements contain text nodes, and text nodes can be turned into text
     ranges with metrics that reflect the browser's rendered page. That means we
     can keep track of a "cursor" and visualize that with a little red underline,
-    while also highlight the "large block" that text is in by tapping into the
-    parent's bounding client rect.
+    while also highlight the "larger block" that text is in by using a range
+    that covers the entire text and then highlighting the one or more client
+    rects that range covers.
   </p>
 
   <p>
-    So we let the browser do most of the work in terms of editing the cnotent,
+    So we let the browser do most of the work in terms of editing the content,
     and we provide controls for switching one type of content into another. this
     is of course far from perfect because this is just a proof of concept, but
     it highlights the fact that HTML is pretty uniquely suited to being an
@@ -67,7 +68,7 @@
   <p>
     Sure, but that's only because the entire document is currently editable.
     Remove the <code>contenteditable</code> attribute on the body, and it's a
-    normal page again.
+    normal page again. Imagine this being an option you can toggle.
   </p>
 
   <h2>What's left?</h2>
@@ -75,15 +76,16 @@
   <ul>
     <li>
       Making the standard WYSIWYG functions work: tag toggling "works", simple
-      text wrapping and unwrapping "works", but links and image buttons do
+      text wrapping and unwrapping "works", but only with selections (not
+      "cursor is on bold text, click to unbold"), and links and image buttons do
       nothing at the moment, but overlap-markup (e.g. bolding across italics)
       makes the code go "I have no idea what I'm doing here so I'll do nothing"
       right now.
     </li>
     <li>
-      Adding support for preformatted text blocks ("code blocks") without
-      using CodeMirror or the like. We're not "writing" code in this context,
-      we're just showing it.
+      Adding support for preformatted text blocks ("code blocks") without using
+      CodeMirror or the like. We're not "writing" code in this context, we're
+      just showing it.
     </li>
     <li>
       Recording changes as some kind of OT/CRDT that can be rolled/played back.
