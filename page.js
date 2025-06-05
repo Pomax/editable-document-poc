@@ -29,11 +29,9 @@ for (const tag of Editable.concat(Trimmable)) {
 }
 
 // Set up our block and letter marker overlays
-[`blockMatch`, `letterMatch`].forEach((name) => {
-  const div = (globalThis[name] = document.createElement(`div`));
-  div.classList.add(`matcher`);
-  document.body.append(div);
-});
+const letterMatch = document.createElement(`div`);
+letterMatch.classList.add(`letter-matcher`);
+document.body.append(letterMatch);
 
 // Set up our edit options container
 const options = document.createElement(`div`);
@@ -138,8 +136,15 @@ function highLight(textNode, s, first, last, range) {
   setBlockMatch: {
     range.setStart(textNode, first);
     range.setEnd(textNode, last);
-    const { x, y, width: w, height: h } = range.getBoundingClientRect();
-    setDims(blockMatch, x, y, w, h);
+    document.querySelectorAll(`div.matcher`).forEach((d) => d.remove());
+    const rects = range.getClientRects();
+    for (let i = 0; i < rects.length; i++) {
+      const { x, y, width: w, height: h } = rects[i];
+      const div = document.createElement(`div`);
+      div.classList.add(`matcher`);
+      setDims(div, x, y, w, h);
+      document.body.appendChild(div);
+    }
   }
 
   setLetterMatch: {

@@ -41,17 +41,18 @@ html {
       }
     }
 
-    div.matcher {
+    div.matcher,
+    div.letter-matcher {
       position: absolute;
       width: 0;
       height: 0;
       background: #00ff7030;
       pointer-events: none;
-      &:nth-of-type(2) {
-        background: transparent;
-        border: none;
-        border-bottom: 3px solid red;
-      }
+    }
+    div.letter-matcher {
+      background: transparent;
+      border: none;
+      border-bottom: 3px solid red;
     }
 
     div.edit-options {
