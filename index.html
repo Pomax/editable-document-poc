@@ -73,8 +73,18 @@
   <h2>What's left?</h2>
 
   <ul>
-    <li>Making the standard WYSIWYG functions work.</li>
-    <li>Adding support for preformatted text blocks ("code blocks")</li>
+    <li>
+      Making the standard WYSIWYG functions work: tag toggling "works", simple
+      text wrapping and unwrapping "works", but links and image buttons do
+      nothing at the moment, but overlap-markup (e.g. bolding across italics)
+      makes the code go "I have no idea what I'm doing here so I'll do nothing"
+      right now.
+    </li>
+    <li>
+      Adding support for preformatted text blocks ("code blocks") without
+      using CodeMirror or the like. We're not "writing" code in this context,
+      we're just showing it.
+    </li>
     <li>
       Recording changes as some kind of OT/CRDT that can be rolled/played back.
     </li>

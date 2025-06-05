@@ -2,6 +2,16 @@ const currentRoot = document.body;
 currentRoot.contentEditable = true;
 currentRoot.spellcheck = true;
 
+// Listen for content (i.e. text) diffs:
+currentRoot.addEventListener(`input`, (evt) => {
+  console.log(`input:`, evt);
+});
+
+// Listening for DOM change (i.e. markup) diffs requires
+// creating diff events in the code itself, because mutation
+// observers don't give you the information required to say
+// "this stretch of text got marked up".
+
 let currentElement = undefined;
 let currentTextNode = undefined;
 let prevCursor = { index: -1, caret: -1 };
@@ -30,12 +40,12 @@ for (const tag of Editable.concat(Trimmable)) {
 
 // Set up our block and letter marker overlays
 const letterMatch = document.createElement(`div`);
-letterMatch.classList.add(`letter-matcher`);
+letterMatch.classList.add(`letter-matcher`, `ignore-for-diffing`);
 document.body.append(letterMatch);
 
 // Set up our edit options container
 const options = document.createElement(`div`);
-options.classList.add(`edit-options`);
+options.classList.add(`edit-options`, `ignore-for-diffing`);
 document.body.append(options);
 
 document.addEventListener(`click`, (evt) => {
@@ -61,18 +71,29 @@ document.addEventListener(`keyup`, ({ key }) => {
     // check that next sibling is not a text node
     const next = currentTextNode.nextSibling;
     if (next?.nodeType === 3) {
-      console.log(`we need to merge forward`);
-      const L = currentTextNode.textContent.length;
-      currentTextNode.textContent += next.textContent;
-      currentElement.removeChild(next);
-      setCursor(currentTextNode, L);
+      const offset = mergeForward(currentTextNode, next);
+      setCursor(currentTextNode, offset);
     }
   }
 });
 
-/**
- * ...
- */
+// ----------------------------------------------------------
+
+function mergeForward(textNode, next) {
+  const offset = textNode.textContent.length;
+  textNode.textContent += next.textContent;
+  currentElement.removeChild(next);
+  return offset;
+}
+
+function setCursor(element = currentTextNode, pos = 0) {
+  const selection = window.getSelection();
+  const range = document.createRange();
+  range.setStart(element, pos);
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
 function findCursor() {
   // Get the "global" caret position
   const selection = window.getSelection();
@@ -141,7 +162,7 @@ function highLight(textNode, s, first, last, range) {
     for (let i = 0; i < rects.length; i++) {
       const { x, y, width: w, height: h } = rects[i];
       const div = document.createElement(`div`);
-      div.classList.add(`matcher`);
+      div.classList.add(`matcher`, `ignore-for-diffing`);
       setDims(div, x, y, w, h);
       document.body.appendChild(div);
     }
@@ -180,11 +201,12 @@ function setDims(e, x = 0, y = 0, w = 0, h = 0) {
   });
 }
 
+// --------------------------------------------------------
+
 function changeTag(newtag, e = currentElement) {
   e = e.closest(Editable.join(`,`));
   if (!e) return;
   const tag = e.tagName.toLowerCase();
-  console.log(tag, `->`, newtag);
   e.outerHTML = e.outerHTML
     .replace(`<${tag}`, `<${newtag}`)
     .replace(`</${tag}`, `</${newtag}`);
@@ -196,11 +218,22 @@ function wrapTextIn(tag) {
     selection;
   let start = { offset: anchorOffset, node: anchorNode };
   let end = { offset: focusOffset, node: focusNode };
-  if (direction === `backward`) {
-    [start, end] = [end, start];
+
+  // correct for backwardness?
+  if (direction === `backward`) [start, end] = [end, start];
+
+  // correct for the super weird behaviour where a double-click
+  // text select on, e.g. a <strong> element will instead create
+  // a text seleciton that starts "at the end of the text before"
+  // and ends at "the start of the text after"... because of course.
+  if (
+    end.offset === 0 &&
+    start.node.textContent.length === start.offset &&
+    start.node.nextSibling.nextSibling === end.node
+  ) {
+    start = { offset: 0, node: start.node.nextSibling };
+    end = { offset: start.node.textContent.length, node: start.node };
   }
-  const text = selection.toString();
-  console.log(start, end, text);
 
   const currentTag = currentElement.tagName.toLowerCase();
 
@@ -209,9 +242,27 @@ function wrapTextIn(tag) {
     // but we do need to make sure that "bolding bold unbolds", rather
     // than blindly nesting the same tag inside itself.
     if (tag === currentTag) {
-      console.log(`we should remove ${tag}`);
+      const parent = currentElement.parentNode;
+      const textNode = currentElement.childNodes[0];
+      parent.replaceChild(textNode, currentElement);
+      currentElement = parent;
+      currentTextNode = textNode;
+      let cursorPos = textNode.textContent.length;
+
+      // Do we need to stitch a bunch of text nodes together again now?
+      const prev = currentTextNode.previousSibling;
+      if (prev?.nodeType === 3) {
+        cursorPos += mergeForward(prev, currentTextNode);
+        currentTextNode = prev;
+      }
+
+      const next = currentTextNode.nextSibling;
+      if (next?.nodeType === 3) {
+        mergeForward(currentTextNode, next);
+      }
     } else {
       // Note that we need to trim our wrap text, because we don't want
+      // spurious spaces at the start or end of the wrapping tags.
       // spurious spaces at the start or end of the wrapping tags.
       let wrapText = currentTextNode.textContent.substring(
         start.offset,
@@ -241,56 +292,14 @@ function wrapTextIn(tag) {
       );
 
       // Make sure to put the cursor back
-      const range = document.createRange();
-      range.setStart(currentTextNode, 0);
-      range.setEnd(currentTextNode, 0);
-      selection.removeAllRanges();
-      selection.addRange(range);
-      findCursor();
+      setCursor();
     }
   }
 
-  const textNodes = getTextNodes();
-
-  /*
-  // are we bolding text?
-  if (currentTag !== tag) {
-    const before = document.createTextNode(
-      currentTextNode.textContent.substring(0, pos)
-    );
-
-    const element = document.createElement(tag);
-    element.textContent = currentTextNode.textContent.substring(
-      pos,
-      pos + find.length
-    );
-
-    currentElement.insertBefore(element, currentTextNode);
-    currentElement.insertBefore(before, element);
-    currentTextNode.textContent = currentTextNode.textContent.substring(
-      pos + find.length
-    );
-
-    // make sure to put the cursor back
-    const range = document.createRange();
-    range.setStart(element.childNodes[0], 0);
-    range.setEnd(element.childNodes[0], find.length);
-    selection.removeAllRanges();
-    selection.addRange(range);
-  }
-
-  // if not, unbold and merge the text nodes
-  */
-}
-
-function setCursor(element = currentTextNode, pos = 0) {
-  const selection = window.getSelection();
-  const range = document.createRange();
-  range.setStart(element, pos);
-  selection.removeAllRanges();
-  selection.addRange(range);
   findCursor();
 }
+
+// --------------------------------------------------------
 
 const labels =
   `h1, h2, h3, h4, p, ul, ol, code, strong, emphasis, link, img`.split(`, `);
@@ -315,9 +324,9 @@ const handleEdit = {
 };
 
 labels.forEach((name) => {
-  options.querySelector(`#btn-${name}`).addEventListener(`pointerdown`, (evt) => {
+  const btn = options.querySelector(`#btn-${name}`);
+  btn.addEventListener(`pointerdown`, (evt) => {
     evt.preventDefault();
-    evt.stopPropagation();
     handleEdit[name]();
   });
 });
