@@ -18,16 +18,17 @@ const Keys = {
   right: `ArrowRight`,
   backspace: `Backspace`,
   delete: `Delete`,
+  enter: `Enter`,
 };
 
 // Directly editable elements "root" elements.
-const Editable = [`p`, `h1`, `h2`, `h3`, `h4`, `ul`, `ol`, `img`];
+const Editable = [`pre`, `p`, `h1`, `h2`, `h3`, `h4`, `ul`, `ol`, `img`];
 
 // Alements where leading and trailing white space can be safely removed.
 const Trimmable = [`main`, `header`, `div`, `section`, `li`];
 
 // Cosmetic markup that may be nested in any order
-const Cosmetic = [`strong`, `em`, `b`, `i`, `s`, `code`, `a`, `pre`];
+const Cosmetic = [`strong`, `em`, `b`, `i`, `s`, `code`, `a`];
 
 // Clear out problematic whitespace before we begin.
 for (const tag of Editable.concat(Trimmable)) {
@@ -79,7 +80,20 @@ document.addEventListener(`keyup`, ({ key, metaKey, ctrlKey }) => {
     const next = currentTextNode.nextSibling;
     if (next?.nodeType === 3) {
       const offset = mergeForward(currentTextNode, next);
-      setCursor(currentTextNode, offset);
+      setCursor(offset);
+    }
+  }
+
+  if (key === Keys.enter) {
+    // did we just create a <div>? If so, no we didn't, we made a <p>
+    if (currentElement.tagName.toLowerCase() === `div`) {
+      const p = document.createElement(`p`);
+      p.textContent = ` `;
+      currentElement.parentNode.replaceChild(p, currentElement);
+      currentElement = p;
+      currentTextNode = currentElement.childNodes[0];
+      currentTextNode.textContent = ``;
+      setCursor();
     }
   }
 });
@@ -93,13 +107,13 @@ function mergeForward(textNode, next) {
   return offset;
 }
 
-function setCursor(element = currentTextNode, pos = 0) {
+function setCursor(pos = 0) {
   const selection = window.getSelection();
   const range = document.createRange();
-  range.setStart(element, pos);
+  range.setStart(currentTextNode, pos);
   selection.removeAllRanges();
   selection.addRange(range);
-  highLight(element, pos);
+  highLight(currentTextNode, pos);
 }
 
 function selectEntireElement(element = currentElement) {
@@ -111,49 +125,30 @@ function selectEntireElement(element = currentElement) {
 }
 
 function findCursor() {
-  const textNodes = getTextNodes();
-
   // Get the "global" caret position
   const selection = window.getSelection();
   if (!selection.anchorNode) return;
 
-  // Convert that into a local caret position relative
-  // the the currentRoot element:
-  const range = selection.getRangeAt(0);
-  const clonedRange = range.cloneRange();
-  clonedRange.selectNodeContents(currentRoot);
-  clonedRange.setEnd(range.endContainer, range.endOffset);
-  const caret = clonedRange.toString().length;
+  const index = selection.anchorOffset;
+  let node = selection.anchorNode;
 
-  // Now that we have the caret in terms of its position
-  // inside the currentRoot element, find the text node
-  // the caret is actually in.
-  let index = -1;
-  let tracked = 0;
-  for (const node of textNodes) {
-    const L = node.textContent.length;
-    if (tracked + L >= caret) {
-      currentTextNode = node;
-      index = caret - tracked;
-      break;
-    } else tracked += L;
-  }
-
-  // Do we need to "fast forward" to real text because
-  // we landed on some interstitial whitespace instead?
-  if (currentTextNode) {
-    let pos = textNodes.indexOf(currentTextNode);
-    while (currentTextNode && currentTextNode.textContent.trim() === ``) {
-      index -= currentTextNode.textContent.length;
-      currentTextNode = textNodes[++pos];
-    }
-    if (currentTextNode) {
-      currentElement = currentTextNode.parentNode;
-      highLight(currentTextNode, index);
+  // If a node has no text content, then we
+  // need to create one before we move on:
+  if (node.nodeType === 1) {
+    if (node.textContent === ``) {
+      node.innerHTML = ` `;
+      node.childNodes[0].textContent = ``;
+      node = node.childNodes[0];
     }
   }
 
-  return { caret, index };
+  // And while this check should now be a noop,
+  // let's just keep it in here, just in case.
+  if (node.nodeType === 3) {
+    currentTextNode = node;
+    currentElement = currentTextNode.parentNode;
+    highLight(currentTextNode, index);
+  }
 }
 
 function getTextNodes(nodes = [], node = {}) {
@@ -197,7 +192,8 @@ function highLight(textNode, s, first, last, range) {
   }
 
   setContextMenu: {
-    setContextMenu(currentElement.closest(Editable.join(`,`)));
+    const editable = textNode.parentNode.closest(Editable.join(`,`));
+    setContextMenu(editable);
   }
 }
 
@@ -224,12 +220,24 @@ function changeTag(newtag, e = currentElement) {
 
 function wrapTextIn(tag) {
   const selection = window.getSelection();
-  const { anchorNode, anchorOffset, focusNode, focusOffset, direction } =
-    selection;
+  const { anchorNode, anchorOffset, focusNode, focusOffset } = selection;
   let start = { offset: anchorOffset, node: anchorNode };
   let end = { offset: focusOffset, node: focusNode };
 
+  // If we don't have a selection, select whatever word
+  // the cursor is currently on.
+  if (start.offset === end.offset && start.node === end.node) {
+    console.log(`single cursor, let's expand it`);
+
+    selection?.modify("move", "backward", "word");
+    selection?.modify("extend", "forward", "word");
+    const { anchorNode, anchorOffset, focusNode, focusOffset } = selection;
+    start = { offset: anchorOffset, node: anchorNode };
+    end = { offset: focusOffset, node: focusNode };
+  }
+
   // correct for backwardness?
+  const { direction } = selection;
   if (direction === `backward`) [start, end] = [end, start];
 
   // correct for the super weird behaviour where a double-click
@@ -272,12 +280,17 @@ function wrapTextIn(tag) {
         mergeForward(currentTextNode, next);
       }
 
-      highLight(currentTextNode, cursorPos);
-    } else if (currentElement.closest(tag)) {
-      // e.g. <strong><em>...</em></strong> and we're un-strong-ing
+      setCursor(cursorPos);
+    }
+
+    // embedded change, e.g. <strong><em>...</em></strong> and we're un-strong-ing
+    else if (currentElement.closest(tag)) {
       const wrapper = currentElement.closest(tag);
       wrapper.parentNode.replaceChild(currentElement, wrapper);
-    } else {
+    }
+
+    // "tag" the selection
+    else {
       // Note that we need to trim our wrap text, because we don't want
       // spurious spaces at the start or end of the wrapping tags.
       // spurious spaces at the start or end of the wrapping tags.
@@ -322,13 +335,13 @@ const handleEdit = {
   h3: () => changeTag(`h3`),
   h4: () => changeTag(`h4`),
   p: () => changeTag(`p`),
+  pre: () => changeTag(`pre`),
   ol: () => changeTag(`ol`),
   ul: () => changeTag(`ul`),
   code: () => wrapTextIn(`code`),
   strong: () => wrapTextIn(`strong`),
   em: () => wrapTextIn(`em`),
   a: () => wrapTextIn(`a`),
-  pre: () => wrapTextIn(`pre`),
   img: () => pickImage(),
 };
 
@@ -349,6 +362,7 @@ labels.forEach((name) => {
 function setContextMenu(blockElement) {
   if (!currentElement) return;
   if (!blockElement) return;
+
   let { x, y, width: w, height: h } = blockElement.getBoundingClientRect();
   if (y < 30) y = h + y + 30;
 

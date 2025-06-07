@@ -20,7 +20,16 @@
     font-weight: bold;
     font-style: italic;
   }
+  p {
+    min-height: 1em;
+  }
+  pre {
+    width: 100%;
+    background-color: #ff02;
+    padding: 0.5em;
+  }
 }
+
 html {
   body {
     #cursor {
@@ -46,7 +55,7 @@ html {
       position: absolute;
       width: 0;
       height: 0;
-      background: #00ff7030;
+      background: #00ff7010;
       pointer-events: none;
     }
     div.letter-matcher {
@@ -65,14 +74,21 @@ html {
       align-items: center;
       row-gap: 2px;
       column-gap: 2px;
+      padding-left: 1em;
 
       background: #02ff78;
       color: white;
       border: 1px solid black;
       box-sizing: border-box;
 
-      & button.active {
-        background: #00e5ff;
+      & button {
+        border: 1px solid #444;
+        border-radius: 0;
+        background: white;
+
+        &.active {
+          background: #00e5ff;
+        }
       }
     }
   }
