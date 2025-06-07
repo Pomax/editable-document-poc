@@ -7,6 +7,10 @@ currentRoot.addEventListener(`input`, () => {
   // ...
 });
 
+// TODO: add in an undo history for "not handled by the browser edits",
+//       i.e. swapping tags, wrapping/unwrapping, etc. If the stack has
+//       operations,
+
 let currentElement = undefined;
 let currentTextNode = undefined;
 let prevCursor = { index: -1, caret: -1 };
@@ -197,6 +201,69 @@ function highLight(textNode, s, first, last, range) {
   }
 }
 
+function setContextMenu(blockElement) {
+  if (!currentElement) return;
+  if (!blockElement) return;
+
+  options.removeAttribute(`hidden`);
+  let { x, y, width: w, height: h } = blockElement.getBoundingClientRect();
+  if (y < 30) y = h + y + 30;
+
+  if (options.element === currentElement) return;
+  options.element = currentElement;
+  setDims(options, x, `${y}px - 2.5em`, w, `2em`);
+
+  document
+    .querySelectorAll(`div.edit-options button.active`)
+    .forEach((e) => e.classList.remove(`active`));
+
+  // do we need to highlight anything?
+  Cosmetic.forEach((tag) => {
+    if (currentElement.closest(tag)) {
+      options.querySelector(`#btn-${tag}`)?.classList.add(`active`);
+    }
+  });
+
+  Editable.forEach((tag) => {
+    if (currentElement.closest(tag)) {
+      options.querySelector(`#btn-${tag}`)?.classList.add(`active`);
+    }
+  });
+
+  options.querySelectorAll(`input`).forEach((e) => e.remove());
+
+  const extras = options.querySelector(`.extras`);
+  extras.innerHTML = ``;
+
+  if (currentElement.tagName.toLowerCase() === `a`) {
+    console.log(`show link UI here`);
+    const label = document.createElement(`label`);
+    label.textContent = `Link URL:`;
+    extras.appendChild(label);
+    const input = document.createElement(`input`);
+    input.type = `url`;
+    input.value = currentElement.href;
+    extras.appendChild(input);
+    input.addEventListener(`input`, (evt) => {
+      currentElement.href = input.value;
+    });
+  }
+
+  if (currentElement.tagName.toLowerCase() === `img`) {
+    console.log(`show link UI here`);
+    const label = document.createElement(`label`);
+    label.textContent = `Image source:`;
+    extras.appendChild(label);
+    const input = document.createElement(`input`);
+    input.type = `url`;
+    input.value = currentElement.href;
+    extras.appendChild(input);
+    input.addEventListener(`input`, (evt) => {
+      currentElement.src = input.value;
+    });
+  }
+}
+
 function setDims(e, x = 0, y = 0, w = 0, h = 0) {
   const val = (v) => (typeof v === `number` ? v + `px` : v);
   Object.assign(e.style, {
@@ -337,6 +404,10 @@ function wrapTextIn(tag) {
   }
 }
 
+function pickImage() {
+  // TODO: actually do what this says - also make this figure based, not just "image". It's 2025.
+}
+
 // --------------------------------------------------------
 
 const handleEdit = {
@@ -357,9 +428,10 @@ const handleEdit = {
 
 const labels = Object.keys(handleEdit);
 
-options.innerHTML = labels
-  .map((label) => `<button id="btn-${label}">${label}</button>`)
-  .join(`\n`);
+options.innerHTML =
+  labels
+    .map((label) => `<button id="btn-${label}">${label}</button>`)
+    .join(`\n`) + `<span class="extras"></span>`;
 
 labels.forEach((name) => {
   const btn = options.querySelector(`#btn-${name}`);
@@ -369,31 +441,4 @@ labels.forEach((name) => {
   });
 });
 
-function setContextMenu(blockElement) {
-  if (!currentElement) return;
-  if (!blockElement) return;
-
-  let { x, y, width: w, height: h } = blockElement.getBoundingClientRect();
-  if (y < 30) y = h + y + 30;
-
-  if (options.element === currentElement) return;
-  options.element = currentElement;
-  setDims(options, x, `${y}px - 2.5em`, w, `2em`);
-
-  document
-    .querySelectorAll(`div.edit-options button.active`)
-    .forEach((e) => e.classList.remove(`active`));
-
-  // do we need to highlight anything?
-  Cosmetic.forEach((tag) => {
-    if (currentElement.closest(tag)) {
-      options.querySelector(`#btn-${tag}`)?.classList.add(`active`);
-    }
-  });
-
-  Editable.forEach((tag) => {
-    if (currentElement.closest(tag)) {
-      options.querySelector(`#btn-${tag}`)?.classList.add(`active`);
-    }
-  });
-}
+options.setAttribute(`hidden`, `hidden`);
