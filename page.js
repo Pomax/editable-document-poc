@@ -2,15 +2,10 @@ const currentRoot = document.body;
 currentRoot.contentEditable = true;
 currentRoot.spellcheck = true;
 
-// Listen for content (i.e. text) diffs:
-currentRoot.addEventListener(`input`, (evt) => {
-  console.log(`input:`, evt);
+// TODO: listening for diffs, so that we can roll/play them back.
+currentRoot.addEventListener(`input`, () => {
+  // ...
 });
-
-// Listening for DOM change (i.e. markup) diffs requires
-// creating diff events in the code itself, because mutation
-// observers don't give you the information required to say
-// "this stretch of text got marked up".
 
 let currentElement = undefined;
 let currentTextNode = undefined;
@@ -26,10 +21,13 @@ const Keys = {
 };
 
 // Directly editable elements "root" elements.
-const Editable = [`p`, `h1`, `h2`, `h3`, `h4`, `ul`, `ol`];
+const Editable = [`p`, `h1`, `h2`, `h3`, `h4`, `ul`, `ol`, `img`];
 
-// Alements where leading and trailing white can be safely removed.
+// Alements where leading and trailing white space can be safely removed.
 const Trimmable = [`main`, `header`, `div`, `section`, `li`];
+
+// Cosmetic markup that may be nested in any order
+const Cosmetic = [`strong`, `em`, `b`, `i`, `s`, `code`, `a`];
 
 // Clear out problematic whitespace before we begin.
 for (const tag of Editable.concat(Trimmable)) {
@@ -92,9 +90,12 @@ function setCursor(element = currentTextNode, pos = 0) {
   range.setStart(element, pos);
   selection.removeAllRanges();
   selection.addRange(range);
+  highLight(element, pos);
 }
 
 function findCursor() {
+  const textNodes = getTextNodes();
+
   // Get the "global" caret position
   const selection = window.getSelection();
   if (!selection.anchorNode) return;
@@ -110,7 +111,6 @@ function findCursor() {
   // Now that we have the caret in terms of its position
   // inside the currentRoot element, find the text node
   // the caret is actually in.
-  let textNodes = getTextNodes();
   let index = -1;
   let tracked = 0;
   for (const node of textNodes) {
@@ -169,26 +169,19 @@ function highLight(textNode, s, first, last, range) {
   }
 
   setLetterMatch: {
-    range.setStart(textNode, s === first ? 0 : s - 1);
-    range.setEnd(textNode, s === last ? s : s + 1);
-    const { x, y, width: w, height: h } = range.getBoundingClientRect();
-    setDims(letterMatch, x, y, w, h);
+    try {
+      range.setStart(textNode, s === first ? 0 : s - 1);
+      range.setEnd(textNode, s === last ? s : s + 1);
+      const { x, y, width: w, height: h } = range.getBoundingClientRect();
+      setDims(letterMatch, x, y, w, h);
+    } catch (e) {
+      // cool
+    }
   }
 
   setContextMenu: {
     setContextMenu(currentElement.closest(Editable.join(`,`)));
   }
-}
-
-function setContextMenu(blockElement) {
-  if (!currentElement) return;
-  if (!blockElement) return;
-  let { x, y, width: w, height: h } = blockElement.getBoundingClientRect();
-  if (y < 30) y = h + y + 30;
-
-  if (options.element === currentElement) return;
-  options.element = currentElement;
-  setDims(options, x, `${y}px - 2.5em`, w, `2em`);
 }
 
 function setDims(e, x = 0, y = 0, w = 0, h = 0) {
@@ -242,6 +235,7 @@ function wrapTextIn(tag) {
     // but we do need to make sure that "bolding bold unbolds", rather
     // than blindly nesting the same tag inside itself.
     if (tag === currentTag) {
+      // "untag" the content
       const parent = currentElement.parentNode;
       const textNode = currentElement.childNodes[0];
       parent.replaceChild(textNode, currentElement);
@@ -260,6 +254,12 @@ function wrapTextIn(tag) {
       if (next?.nodeType === 3) {
         mergeForward(currentTextNode, next);
       }
+
+      highLight(currentTextNode, cursorPos);
+    } else if (currentElement.closest(tag)) {
+      // e.g. <strong><em>...</em></strong> and we're un-strong-ing
+      const wrapper = currentElement.closest(tag);
+      wrapper.parentNode.replaceChild(currentElement, wrapper);
     } else {
       // Note that we need to trim our wrap text, because we don't want
       // spurious spaces at the start or end of the wrapping tags.
@@ -295,18 +295,9 @@ function wrapTextIn(tag) {
       setCursor();
     }
   }
-
-  findCursor();
 }
 
 // --------------------------------------------------------
-
-const labels =
-  `h1, h2, h3, h4, p, ul, ol, code, strong, emphasis, link, img`.split(`, `);
-
-options.innerHTML = labels
-  .map((label) => `<button id="btn-${label}">${label}</button>`)
-  .join(`\n`);
 
 const handleEdit = {
   h1: () => changeTag(`h1`),
@@ -318,10 +309,16 @@ const handleEdit = {
   ul: () => changeTag(`ul`),
   code: () => wrapTextIn(`code`),
   strong: () => wrapTextIn(`strong`),
-  emphasis: () => wrapTextIn(`em`),
-  link: () => wrapTextIn(`a`),
-  image: () => pickImage(),
+  em: () => wrapTextIn(`em`),
+  a: () => wrapTextIn(`a`),
+  img: () => pickImage(),
 };
+
+const labels = Object.keys(handleEdit);
+
+options.innerHTML = labels
+  .map((label) => `<button id="btn-${label}">${label}</button>`)
+  .join(`\n`);
 
 labels.forEach((name) => {
   const btn = options.querySelector(`#btn-${name}`);
@@ -330,3 +327,31 @@ labels.forEach((name) => {
     handleEdit[name]();
   });
 });
+
+function setContextMenu(blockElement) {
+  if (!currentElement) return;
+  if (!blockElement) return;
+  let { x, y, width: w, height: h } = blockElement.getBoundingClientRect();
+  if (y < 30) y = h + y + 30;
+
+  if (options.element === currentElement) return;
+  options.element = currentElement;
+  setDims(options, x, `${y}px - 2.5em`, w, `2em`);
+
+  document
+    .querySelectorAll(`div.edit-options button.active`)
+    .forEach((e) => e.classList.remove(`active`));
+
+  // do we need to highlight anything?
+  Cosmetic.forEach((tag) => {
+    if (currentElement.closest(tag)) {
+      options.querySelector(`#btn-${tag}`)?.classList.add(`active`);
+    }
+  });
+
+  Editable.forEach((tag) => {
+    if (currentElement.closest(tag)) {
+      options.querySelector(`#btn-${tag}`)?.classList.add(`active`);
+    }
+  });
+}

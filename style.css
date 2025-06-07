@@ -70,6 +70,10 @@ html {
       color: white;
       border: 1px solid black;
       box-sizing: border-box;
+
+      & button.active {
+        background: #00e5ff;
+      }
     }
   }
 }
