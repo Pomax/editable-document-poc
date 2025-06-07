@@ -27,7 +27,7 @@ const Editable = [`p`, `h1`, `h2`, `h3`, `h4`, `ul`, `ol`, `img`];
 const Trimmable = [`main`, `header`, `div`, `section`, `li`];
 
 // Cosmetic markup that may be nested in any order
-const Cosmetic = [`strong`, `em`, `b`, `i`, `s`, `code`, `a`];
+const Cosmetic = [`strong`, `em`, `b`, `i`, `s`, `code`, `a`, `pre`];
 
 // Clear out problematic whitespace before we begin.
 for (const tag of Editable.concat(Trimmable)) {
@@ -56,12 +56,21 @@ document.addEventListener(`touchstart`, (evt) => {
   findCursor();
 });
 
-document.addEventListener(`keydown`, ({ key }) => {
+document.addEventListener(`keydown`, (evt) => {
   if (currentRoot.contentEditable !== `true`) return;
+
+  const { key, metaKey, ctrlKey } = evt;
+
+  // "Select all" should not select the entire document.
+  if ((metaKey || ctrlKey) && key === `a`) {
+    evt.preventDefault();
+    selectEntireElement(currentElement.closest(Editable.join(`,`)));
+  }
+
   findCursor();
 });
 
-document.addEventListener(`keyup`, ({ key }) => {
+document.addEventListener(`keyup`, ({ key, metaKey, ctrlKey }) => {
   if (currentRoot.contentEditable !== `true`) return;
   findCursor();
 
@@ -91,6 +100,14 @@ function setCursor(element = currentTextNode, pos = 0) {
   selection.removeAllRanges();
   selection.addRange(range);
   highLight(element, pos);
+}
+
+function selectEntireElement(element = currentElement) {
+  const selection = window.getSelection();
+  const range = document.createRange();
+  range.selectNode(element);
+  selection.removeAllRanges();
+  selection.addRange(range);
 }
 
 function findCursor() {
@@ -311,6 +328,7 @@ const handleEdit = {
   strong: () => wrapTextIn(`strong`),
   em: () => wrapTextIn(`em`),
   a: () => wrapTextIn(`a`),
+  pre: () => wrapTextIn(`pre`),
   img: () => pickImage(),
 };
 
