@@ -210,12 +210,20 @@ function setDims(e, x = 0, y = 0, w = 0, h = 0) {
 // --------------------------------------------------------
 
 function changeTag(newtag, e = currentElement) {
+  const selection = window.getSelection();
+  const { anchorOffset: pos } = selection;
   e = e.closest(Editable.join(`,`));
   if (!e) return;
-  const tag = e.tagName.toLowerCase();
-  e.outerHTML = e.outerHTML
-    .replace(`<${tag}`, `<${newtag}`)
-    .replace(`</${tag}`, `</${newtag}`);
+  const newElement = document.createElement(newtag);
+  const nodes = Array.from(e.childNodes);
+  do {
+    newElement.appendChild(nodes.shift());
+  } while (nodes.length);
+  if (e === currentElement) currentElement = newElement;
+  e.parentNode.replaceChild(newElement, e);
+  setCursor(pos);
+  options.element = undefined;
+  highLight(currentTextNode);
 }
 
 function wrapTextIn(tag) {
