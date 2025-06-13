@@ -5,6 +5,7 @@ import {
   selectElement,
   getFirstTextNode,
   mergeForward,
+  replaceWith,
 } from "./utils.js";
 
 // recyclable range
@@ -118,42 +119,34 @@ class Cursor {
     const editable = document.querySelector(`span.markdown`);
     if (editable && this.textNode !== editable.childNodes[0]) {
       const content = convertFromMarkDown(editable);
-      const parent = editable.parentNode;
-      let e = content.pop();
-      parent.replaceChild(e, editable);
-      while (content.length) {
-        let before = content.pop();
-        parent.insertBefore(before, e);
-        e = before;
-      }
-
-      if (e.nodeType === 3) {
-        this.update(e.parentNode, e);
-
-        // TODO: and then we may need to merge some text nodes.
-        const next = this.textNode.nextSibling;
-        if (next?.nodeType === 3) {
-          mergeForward(this.textNode, next);
-          highlight(this.textNode);
-        }
-
-        const prev = this.textNode.previousSibling;
-        if (prev?.nodeType === 3) {
-          mergeForward(prev, this.textNode);
-          this.update(this.element, prev);
-          highlight(this.textNode);
-        }
-
-        // TODO: place the cursor...
-      }
+      const updated = replaceWith(editable, content);
+      this.updateAfterReplace(updated);
+      console.log(this.current);
     }
 
-    // Did we just get out of a regular text node with markdown?
+    // Did we just type something that's markdown?
     const nodes = convertFromMarkDown(this.textNode);
     if (nodes.length > 1) {
-      console.log(`yeah probably`);
+      const updated = replaceWith(this.textNode, nodes);
+      this.update(updated.parentNode, updated);
+      this.set();
+    }
+  }
 
-      // TODO: actually do this...
+  updateAfterReplace(e) {
+    this.update(e.parentNode, e);
+
+    const next = this.textNode.nextSibling;
+    if (next?.nodeType === 3) {
+      mergeForward(this.textNode, next);
+      highlight(this.textNode);
+    }
+
+    const prev = this.textNode.previousSibling;
+    if (prev?.nodeType === 3) {
+      mergeForward(prev, this.textNode);
+      this.update(this.element, prev);
+      highlight(this.textNode);
     }
   }
 
@@ -161,6 +154,7 @@ class Cursor {
    * ...
    */
   set(pos = 0, element = this.textNode) {
+    console.log(pos, element);
     const selection = window.getSelection();
     range.setStart(element, pos);
     range.setEnd(element, pos);

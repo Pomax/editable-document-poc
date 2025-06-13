@@ -25,8 +25,29 @@ export function setDims(e, x = 0, y = 0, w = 0, h = 0) {
 }
 
 export function getFirstTextNode(e) {
+  if (e.nodeType === 3) return e;
   const first = e.childNodes[0];
-  if (!first) return;
-  if (first.nodetype === 3) return first;
+  if (!first) {
+    console.log(`hmmmmm`, e);
+    throw new Error(`there is no text node to be found`);
+  }
   return getFirstTextNode(first);
+}
+
+export function replaceWith(element, replacements) {
+  const parent = element.parentNode;
+  const last = replacements.pop();
+
+  let e = last;
+  parent.replaceChild(e, element);
+
+  while (replacements.length) {
+    let before = replacements.pop();
+    parent.insertBefore(before, e);
+    e = before;
+  }
+
+  if (last.nodetype === 3) return last;
+
+  return getFirstTextNode(last);
 }

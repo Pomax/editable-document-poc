@@ -80,13 +80,13 @@ export function convertToMarkdown(node, offset = 0) {
   return { text: returnText, offset };
 }
 
-export function convertFromMarkDown(textNode) {
-  const html = textNode.textContent
+export function convertFromMarkDown({ textContent }) {
+  const html = textContent
     // good old "hot mess of bold and italics"
-    .replace(/(^|[^*])\*\*\*([^<*]+)\*\*\*/g, `<strong><em>$2</em></strong>`)
-    .replace(/(^|[^*])\*\*([^<*]+)\*\*/g, `<strong>$2</strong>`)
-    .replace(/(^|[^*])\*([^<*]+)\*/g, `<em>$2</em>`)
-    .replace(/(^|[^_])_([^<]+)_/g, `<em>$2</em>`)
+    .replace(/(^|[^*])\*\*\*([^<*]+)\*\*\*/g, `$1<strong><em>$2</em></strong>`)
+    .replace(/(^|[^*])\*\*([^<*]+)\*\*/g, `$1<strong>$2</strong>`)
+    .replace(/(^|[^*])\*([^<*]+)\*/g, `$1<em>$2</em>`)
+    .replace(/(^|[^_])_([^<]+)_/g, `$1<em>$2</em>`)
     // This one's obviously weird: backticks inside double backticks need to be
     // safified so we don't turn ``th`i`s`` into <code>th<code>i</code>s</code>
     // and instead turn it into <code>th`i`s</code>...

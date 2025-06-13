@@ -1,4 +1,8 @@
 :root {
+  --body-width: 50rem;
+  --body-offset: calc(50vw - var(--body-width) / 2);
+  --left-comp: calc(-1px - var(--body-offset));
+
   font-family: Arial, Helvetica, sans-serif;
 
   * {
@@ -35,14 +39,16 @@
 
 html {
   body {
-    #cursor {
-      position: absolute;
-      width: 1px;
-      height: 1em;
-      background: black;
-      animation: 1s cursor-blink linear forwards infinite;
-      animation-timing-function: steps(3, end);
-    }
+    position: absolute;
+    top: 0;
+    left: var(--body-offset);
+    width: var(--body-width);
+
+    margin: 0;
+    padding: 0 2em;
+    border: 1px solid lightgrey;
+    border-width: 0 1px;
+    box-shadow: 0 0 10px 0px lightgrey;
 
     main {
       p {
@@ -54,13 +60,16 @@ html {
     }
 
     div.matcher,
-    div.letter-matcher {
+    div.letter-matcher,
+    div.edit-options {
       position: absolute;
       width: 0;
       height: 0;
       background: #00ff7010;
       pointer-events: none;
+      margin-left: var(--left-comp);
     }
+
     div.letter-matcher {
       background: transparent;
       border: none;
@@ -68,9 +77,7 @@ html {
     }
 
     div.edit-options {
-      position: absolute;
-      width: 0;
-      height: 0;
+      pointer-events: auto;
 
       display: flex;
       justify-content: flex-start;
@@ -101,20 +108,5 @@ html {
         min-height: 4em;
       }
     }
-  }
-}
-
-@keyframes cursor-blink {
-  0% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 1;
-  }
-  51% {
-    opacity: 0;
-  }
-  100% {
-    opacity: 0;
   }
 }

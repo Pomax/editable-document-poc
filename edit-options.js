@@ -2,7 +2,7 @@ import { cursor, highlight, setContextMenu } from "./cursor.js";
 import { mergeForward } from "./utils.js";
 import { toggleMarkdown } from "./markdown.js";
 
-const options = document.createElement(`div`);
+export const options = document.createElement(`div`);
 options.classList.add(`edit-options`, `ignore-for-diffing`);
 document.body.append(options);
 
@@ -75,6 +75,8 @@ function wrapTextIn(tag) {
   const { anchorNode, anchorOffset, focusNode, focusOffset } = selection;
   let start = { offset: anchorOffset, node: anchorNode };
   let end = { offset: focusOffset, node: focusNode };
+
+  // FIXME: TODO: if this is a markdown span, we should unspan it.
 
   // If we don't have a selection, either select whatever word
   // the cursor is currently on, or if we're in a cosmetic element
