@@ -94,6 +94,13 @@ html {
         }
       }
     }
+
+    &[contenteditable] {
+      textarea {
+        width: 100%;
+        min-height: 4em;
+      }
+    }
   }
 }
 
