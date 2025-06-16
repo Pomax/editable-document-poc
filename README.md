@@ -1,5 +1,23 @@
-demo over on https://pomax.github.io/editable-paragraph-element
+Demo over on https://pomax.github.io/editable-document-poc
 
-This is basically a weird mix of "WYSIWYG" and "Markdown" at the moment, as cosmetic markup gets converted to plain text markdown when the cursor is over it, but the WYSIWYG edit bar will still show cosmetic toggle options... not ideal but we'll figure it out.
+Special keys (ctrl-... on Windows/Linux, cmd-... on Mac):
 
-Also while markdown gets live-converted when you type it, there's a bunch of fun cursor behaviour that isn't ideal atm. Again, we'll figure it out though.
+- `b` bold (strong)
+- `i` italic (emphasis)
+- `c` `<code>`
+
+- `1` through `4` make block an h1 through h4
+- `p` make block a paragraph
+- `e` make block a `<pre>` 
+- `o` make block an ordered list
+- `u` make block an unordered list (there is no underline. No one use underlines in real writing)
+
+Super special "special key":
+
+- `/` toggle markdown vs HTML for the current block
+
+Feel free to file issues if you have ideas, currently still in the works:
+
+- kinda need a prope undo/redo
+- related, kinda need to encode that as OT for "remote" syncing
+- show the button bar for block elements
