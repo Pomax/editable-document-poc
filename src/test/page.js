@@ -4,13 +4,56 @@
 
 import { Editable, OS } from "../constants.js";
 import { getFirstTextNode } from "../utils.js";
-import { convertToMarkdown } from "../markdown.js";
+import { convertFromMarkDown, convertToMarkdown } from "../markdown.js";
 
-const create = (tag) => document.createElement(tag);
+const blocks = [`h1`, `h2`, `h3`, `h4`, `p`, `ol`, `ul`, `pre`];
 const cosmeticsMaster = [`strong`, `em`, `code`, `s`, `sup`, `sub`];
 
 document.body.contentEditable = true;
 document.body.spellcheck = true;
+
+const todo = (...args) => console.warn(...args);
+const fixme = (...args) => console.error(...args);
+const create = (tag) => document.createElement(tag.toLowerCase());
+const range = (sn, so, en, eo) => {
+  const r = document.createRange();
+  if (sn) r.setStart(sn, so);
+  if (en) r.setEnd(en, eo);
+  return r;
+};
+
+const handlers = {
+  // cosmetic handlers
+  b: (evt) => toggleSelection(`strong`, evt),
+  c: (evt) => toggleSelection(`code`, evt),
+  i: (evt) => toggleSelection(`em`, evt),
+  s: (evt) => toggleSelection(`s`, evt),
+  ArrowUp: (evt) => toggleSelection(`sup`, evt),
+  ArrowDown: (evt) => toggleSelection(`sub`, evt),
+  // block handlers
+  1: (evt) => changeBlock(`h1`, evt),
+  2: (evt) => changeBlock(`h2`, evt),
+  3: (evt) => changeBlock(`h3`, evt),
+  4: (evt) => changeBlock(`h4`, evt),
+  p: (evt) => changeBlock(`p`, evt),
+  u: (evt) => changeBlock(`ul`, evt),
+  o: (evt) => changeBlock(`ol`, evt),
+  e: (evt) => changeBlock(`pre`, evt),
+  // markdown toggle
+  "/": (evt) => toggleMarkdown(evt),
+};
+
+const lastDown = {};
+
+/**
+ * ...
+ */
+document.addEventListener(`pointerup`, (evt) => {
+  const s = window.getSelection();
+  highlight(s);
+  const e = s.anchorNode.parentNode.closest(Editable.join(`,`));
+  todo(`show the block button bar`, e);
+});
 
 /**
  * ...
@@ -19,25 +62,95 @@ document.addEventListener(`keydown`, (evt) => {
   const { key, ctrlKey, metaKey } = evt;
   const special = OS === `mac` ? metaKey : ctrlKey;
   if (special) {
-    if (key === `b`) toggleSelection(evt, `strong`);
-    if (key === `c`) toggleSelection(evt, `code`);
-    if (key === `i`) toggleSelection(evt, `em`);
-    if (key === `s`) toggleSelection(evt, `s`);
-    if (key === `ArrowUp`) toggleSelection(evt, `sup`);
-    if (key === `ArrowDown`) toggleSelection(evt, `sub`);
+    handlers[key]?.(evt);
+  } else {
+    const s = window.getSelection();
+    highlight(s);
+    lastDown.markdown = s.anchorNode.parentNode.closest(`.live-markdown`);
   }
 });
 
 /**
  * ...
  */
-function toggleSelection(evt, tag) {
+document.addEventListener(`keyup`, (evt) => {
+  const { key } = evt;
+  const { markdown } = lastDown;
+  const s = window.getSelection();
+  highlight(s);
+
+  if (markdown) {
+    const b = e.closest(`.live-markdown`);
+    if (!b) toggleMarkdown(undefined, markdown);
+    lastDown.markdown = false;
+  }
+
+  // Enter may create a new div, and we want paragraphs instead.
+  if (key === `Enter`) {
+    const div = s.anchorNode;
+    if (div.tagName.toLowerCase() === `div`) {
+      const p = document.createElement(`p`);
+      p.textContent = ` `;
+      p.childNodes[0].textContent = ``;
+      div.parentNode.replaceChild(p, div);
+      const r = range(p.childNodes[0], 0);
+      s.removeAllRanges();
+      s.addRange(r);
+    }
+  }
+});
+
+function highlight(s) {
+  let e = s.anchorNode;
+  if (!e) return;
+  if (e.nodeType === 3) e = e.parentNode;
+  const p = e.closest(Editable.join(`,`));
+  document
+    .querySelectorAll(`.highlight`)
+    .forEach((e) => e.classList.remove(`highlight`));
+  if (p) {
+    p.classList.add(`highlight`);
+    e.classList.add(`highlight`);
+  }
+}
+
+/**
+ * ...
+ */
+function changeBlock(tag, evt) {
+  evt.preventDefault();
+  const s = window.getSelection();
+  const {
+    anchorNode: sn,
+    anchorOffset: so,
+    focusNode: en,
+    focusOffset: eo,
+  } = s;
+  const b = s.anchorNode.parentNode.closest(blocks.join(`,`));
+
+  if (b.closest(`.live-markdown`)) return;
+
+  const replacement = create(tag);
+  const nodes = Array.from(b.childNodes);
+  for (const c of nodes) replacement.appendChild(c);
+  b.parentNode.replaceChild(replacement, b);
+  s.removeAllRanges();
+  s.addRange(range(sn, so, en, eo));
+  return replacement;
+}
+
+/**
+ * ...
+ */
+function toggleSelection(tag, evt) {
   evt?.preventDefault();
 
   const s = window.getSelection();
   let offset = s.direction === `backwards` ? s.anchorOffset : s.focusOffset;
   let e = s.direction === `backwards` ? s.anchorNode : s.focusNode;
   e = e.parentNode;
+
+  if (e.closest(`.live-markdown`)) return;
 
   // Are we in a {{tag}} element already?
   const f = e.closest(tag);
@@ -60,7 +173,7 @@ function toggleSelection(evt, tag) {
     block = s.anchorNode.parentNode.closest(Editable.join(`,`));
   }
   if (block) {
-    const markdown = convertToMarkdown(block).text; //.replace(/\n?\s+/g, ` `);
+    const markdown = convertToMarkdown(block).text.trim();
     console.log(markdown);
   }
 }
@@ -120,9 +233,9 @@ function addMarkup(tag, s, offset, e, contained, cosmetics) {
   if (f) {
     // special case: are we sub'ing a sup or sup'ing a sub?
     if (f.tagName.toLowerCase() === `sub` && tag === `sup`) {
-      return toggleSelection(undefined, `sub`);
+      return toggleSelection(`sub`);
     } else if (f.tagName.toLowerCase() === `sup` && tag === `sub`) {
-      return toggleSelection(undefined, `sup`);
+      return toggleSelection(`sup`);
     }
     s.getRangeAt(0).selectNode(f);
   } else {
@@ -214,4 +327,40 @@ function removeMarkup(tag, s, offset, e, contained, cosmetics) {
   r.setEnd(tn, c);
   s.removeAllRanges();
   s.addRange(r);
+}
+
+function toggleMarkdown(evt, element) {
+  evt?.preventDefault?.();
+  let target;
+  const s = window.getSelection();
+  const b = element ?? s.anchorNode.parentNode.closest(blocks.join(`,`));
+
+  // convert from markdown to HTML
+  if (b.classList.contains(`live-markdown`)) {
+    const original = b.__cached;
+    const nodes = convertFromMarkDown(b);
+    for (const c of nodes) original.appendChild(c);
+    b.parentNode.replaceChild(original, b);
+    target = getFirstTextNode(original);
+  }
+
+  // convert from HTML to markdown
+  else {
+    const markdown = convertToMarkdown(b);
+    const pre = create(`pre`);
+    pre.__cached = create(b.tagName);
+    pre.textContent = markdown.text.trim();
+    pre.classList.add(`live-markdown`);
+    pre.style.whiteSpace = `pre-wrap`;
+    b.parentNode.replaceChild(pre, b);
+    target = getFirstTextNode(pre);
+  }
+
+  todo(`figure out where the heck to put the cursor`); // TODO
+
+  if (!element) {
+    const r = range(target, 0);
+    s.removeAllRanges();
+    s.addRange(r);
+  }
 }

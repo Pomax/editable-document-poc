@@ -10,30 +10,9 @@
     &[hidden] {
       display: none;
     }
-  }
-
-  h1 {
-    font-size: 1.5rem !important;
-    font-weight: bold;
-  }
-  h2 {
-    font-size: 1.25rem !important;
-    font-weight: bold;
-  }
-  h3 {
-    font-weight: bold;
-  }
-  h4 {
-    font-weight: bold;
-    font-style: italic;
-  }
-  p {
-    min-height: 1em;
-  }
-  pre {
-    width: 100%;
-    background-color: #ff02;
-    padding: 0.5em;
+    &.highlight {
+      background-color: #02ff7830;
+    }
   }
 }
 
@@ -57,6 +36,45 @@ html {
         border: 1px solid black;
         padding: 1rem;
       }
+    }
+
+    h1 {
+      font-size: 1.5rem !important;
+      font-weight: bold;
+    }
+
+    h2 {
+      font-size: 1.25rem !important;
+      font-weight: bold;
+    }
+
+    h3 {
+      font-weight: bold;
+    }
+
+    h4 {
+      font-weight: bold;
+      font-style: italic;
+    }
+
+    p {
+      min-height: 1em;
+    }
+
+    pre {
+      width: 100%;
+      white-space: pre-wrap;
+      padding: 0.5em;
+
+      &.live-markdown {
+        border: 1px solid black;
+        border-width: 2px 0;
+        background-color: #ff02;
+      }
+    }
+
+    code {
+      background: #F4F4FF;
     }
 
     div.matcher,

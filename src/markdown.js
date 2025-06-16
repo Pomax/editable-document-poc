@@ -34,7 +34,10 @@ export function convertToMarkdown(node, offset = 0) {
   let returnText = ``;
 
   if (node.nodeType === 3) {
-    returnText = node.textContent.replace(/\n/g, ` `);
+    returnText = node.textContent;
+    if (!node.parentNode.closest(`pre`)) {
+      returnText = node.textContent.replace(/\n?\s+/g, ` `);
+    }
   } else if (node.nodeType === 1) {
     const tag = node.tagName.toLowerCase();
     returnText = Array.from(node.childNodes)
@@ -106,6 +109,12 @@ export function convertToMarkdown(node, offset = 0) {
 
 export function convertFromMarkDown({ textContent }) {
   const html = textContent
+    // obviously this is PoC code.
+    .replace(/(^|\n)#### (.+)(\n|$)/gm, `<h4>$2</h4>`)
+    .replace(/(^|\n)### (.+)(\n|$)/gm, `<h3>$2</h3>`)
+    .replace(/(^|\n)## (.+)(\n|$)/gm, `<h2>$2</h2>`)
+    .replace(/(^|\n)# (.+)(\n|$)/gm, `<h1>$2</h1>`)
+    .replace(/(^|\n)\s*\* (.+)(\n|$)/gm, `<li>$2</li>`)
     // good old "hot mess of bold and italics"
     .replace(/(^|[^*])\*\*\*([^<*]+)\*\*\*/g, `$1<strong><em>$2</em></strong>`)
     .replace(/(^|[^*])\*\*([^<*]+)\*\*/g, `$1<strong>$2</strong>`)
@@ -121,6 +130,6 @@ export function convertFromMarkDown({ textContent }) {
     // links aren't super special
     .replace(/\[([^<]+)\]\(([^<]+)\)/g, `<a href="$2">$1</a>`);
   const div = document.createElement(`div`);
-  div.innerHTML = html;
+  div.innerHTML = html.trim();
   return Array.from(div.childNodes);
 }
