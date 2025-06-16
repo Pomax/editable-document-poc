@@ -44,6 +44,22 @@ export function convertToMarkdown(node, offset = 0) {
         return text;
       })
       .join(``);
+    if (tag === `h1`) {
+      returnText = `# ${returnText}`;
+      offset += 2;
+    }
+    if (tag === `h2`) {
+      returnText = `## ${returnText}`;
+      offset += 3;
+    }
+    if (tag === `h3`) {
+      returnText = `### ${returnText}`;
+      offset += 4;
+    }
+    if (tag === `h4`) {
+      returnText = `#### ${returnText}`;
+      offset += 5;
+    }
     if (tag === `strong`) {
       returnText = `**${returnText}**`;
       offset += 2;
@@ -51,6 +67,14 @@ export function convertToMarkdown(node, offset = 0) {
     if (tag === `em`) {
       returnText = `*${returnText}*`;
       offset += 1;
+    }
+    if (tag === `sub`) {
+      returnText = `<sub>${returnText}</sub>`;
+      offset += 5;
+    }
+    if (tag === `sup`) {
+      returnText = `<sup>${returnText}</sup>`;
+      offset += 5;
     }
     if (tag === `a`) {
       returnText = `[${returnText}](${node.href})`;
