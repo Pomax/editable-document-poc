@@ -79,6 +79,9 @@ document.addEventListener(`keyup`, (evt) => {
   const s = window.getSelection();
   highlight(s);
 
+  let e = s.anchorNode;
+  if (e.nodeType === 3) e = e.parentNode;
+
   if (markdown) {
     const b = e.closest(`.live-markdown`);
     if (!b) toggleMarkdown(undefined, markdown);
@@ -108,7 +111,7 @@ function highlight(s) {
   document
     .querySelectorAll(`.highlight`)
     .forEach((e) => e.classList.remove(`highlight`));
-  if (p) {
+  if (p && !p.classList.contains(`live-markdown`)) {
     p.classList.add(`highlight`);
     e.classList.add(`highlight`);
   }
