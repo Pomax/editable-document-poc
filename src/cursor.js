@@ -110,7 +110,7 @@ class Cursor {
       span.textContent = text;
       e.parentNode.replaceChild(span, e);
       const editable = span.childNodes[0];
-      this.update(e, editable);
+      this.update(span, editable);
       this.set(index + offset, editable);
     }
 
@@ -148,6 +148,8 @@ class Cursor {
       this.update(this.element, prev);
       highlight(this.textNode);
     }
+
+    // FIXME: this loses the cursor...
   }
 
   /**

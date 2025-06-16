@@ -1,5 +1,5 @@
 import { cursor, highlight, setContextMenu } from "./cursor.js";
-import { mergeForward } from "./utils.js";
+import { mergeForward, selectElement } from "./utils.js";
 import { toggleMarkdown } from "./markdown.js";
 
 export const options = document.createElement(`div`);
@@ -77,6 +77,19 @@ function wrapTextIn(tag) {
   let end = { offset: focusOffset, node: focusNode };
 
   // FIXME: TODO: if this is a markdown span, we should unspan it.
+  if (cursor.element.tagName.toLowerCase() === `span`) {
+    const text = cursor.textNode.textContent;
+    if (tag === `strong`) {
+      if (text.match(/\*\*.*\*\*/)) {
+        console.log(`stripping`);
+        cursor.textNode.textContent = text.substring(2, text.length - 2);
+        const range = selection.getRangeAt(0);
+        range.setStart(cursor.textNode, start.offset - 2);
+        range.setEnd(cursor.textNode, start.offset - 2);
+        return setTimeout(() => document.body.focus()); // why does this work?
+      }
+    }
+  }
 
   // If we don't have a selection, either select whatever word
   // the cursor is currently on, or if we're in a cosmetic element

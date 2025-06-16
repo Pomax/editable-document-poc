@@ -1,16 +1,19 @@
 <!DOCTYPE html>
 
 <head>
+  <link rel="shortcut icon" href="data:image/x-icon;," type="image/x-icon" />
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width" />
   <title>An editable HTML document PoC</title>
-  <link rel="stylesheet" href="style.css" async />
-  <script src="page.js" type="module" async></script>
+  <link rel="stylesheet" href="css/style.css" async />
+  <script src="./src/test/page.js" type="module" async></script>
 </head>
 
 <body>
   <h1>Creating an editable page</h1>
   <main>
+    <p>First, a simple paragraph to test some cursor placement and relation</p>
+
     <p>
       This is a text, and the idea is that we can put a cursor in here, even if
       <strong>some content has additional markup</strong>, whether that's
