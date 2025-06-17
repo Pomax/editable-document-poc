@@ -31,7 +31,6 @@ export function toggleMarkdown(element) {
 }
 
 export function convertToMarkdown(node, anchorNode, anchorOffset) {
-  console.log(node, anchorNode, anchorOffset);
   let chunks = [];
 
   const addChunk = (text, fromNode = undefined) => {
@@ -42,19 +41,14 @@ export function convertToMarkdown(node, anchorNode, anchorOffset) {
 
   let caret = 0;
   for (const c of chunks) {
-    console.log(c.text);
     if (c.node === anchorNode) {
       caret += anchorOffset;
-      console.log(`end:`, caret);
       break;
     }
     caret += c.text.length;
-    console.log(`running:`, caret);
   }
 
   const text = chunks.map((c) => c.text).join(``);
-
-  console.log({ text, caret }, text.substring(caret, caret + 10));
 
   return { text, caret };
 }
@@ -146,9 +140,26 @@ function __convertToMarkdown(node, addChunk) {
   }
 }
 
-export function convertFromMarkDown({ textContent }) {
-  const html = textContent
-    // obviously this is PoC code.
+export function convertFromMarkDown({ textContent }, caret) {
+  const caretMarker = `CARETMARKETCARETMARKER`;
+
+  // TODO: it's possible for the caret to be "in" a tag rather than text,
+  //       in which case I don't care enough to fix that in this PoC, the
+  //       real solution there is to (obviously) not use RegExp replacement
+  //       and have a proper tokenizer/converter track where the caret
+  //       should end up in the conversion result =P
+  const good = (c, v = 1) => textContent.substring(c, c + v).match(/\w/);
+  if (!good(caret)) if (!good(caret, -1)) while (!good(caret)) caret++;
+
+  const text =
+    textContent.substring(0, caret) +
+    caretMarker +
+    textContent.substring(caret);
+
+  // Convert text to HTML while tracking where to place
+  // the caret based on where it was in the original text.
+  const html = text
+    // ...obviously this is PoC code...
     .replace(/(^|\n)#### (.+)(\n|$)/gm, `<h4>$2</h4>`)
     .replace(/(^|\n)### (.+)(\n|$)/gm, `<h3>$2</h3>`)
     .replace(/(^|\n)## (.+)(\n|$)/gm, `<h2>$2</h2>`)
@@ -168,7 +179,22 @@ export function convertFromMarkDown({ textContent }) {
     .replace(/⁜/, "`")
     // links aren't super special
     .replace(/\[([^<]+)\]\(([^<]+)\)/g, `<a href="$2">$1</a>`);
+
   const div = document.createElement(`div`);
   div.innerHTML = html.trim();
-  return Array.from(div.childNodes);
+  const nodes = Array.from(div.childNodes);
+
+  let anchorNode, anchorOffset;
+  const tree = document.createTreeWalker(div, 4, () => 1);
+  for (let tn = tree.nextNode(); tn; tn = tree.nextNode()) {
+    const pos = tn.textContent.indexOf(caretMarker);
+    if (pos >= 0) {
+      tn.textContent = tn.textContent.replace(caretMarker, ``);
+      anchorNode = tn;
+      anchorOffset = pos;
+      break;
+    }
+  }
+
+  return { nodes, anchorNode, anchorOffset };
 }

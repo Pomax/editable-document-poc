@@ -367,18 +367,19 @@ function toggleMarkdown(evt, element) {
 
   // convert from markdown to HTML
   if (isMarkDownBlock) {
-    const original = b.__cached;
-    const nodes = convertFromMarkDown(b);
+    const original = create(b.__cached_tag);
+    const { nodes, anchorNode, anchorOffset } = convertFromMarkDown(b, o);
     for (const c of nodes) original.appendChild(c);
     b.parentNode.replaceChild(original, b);
-    target = getFirstTextNode(original);
+    s.removeAllRanges();
+    s.addRange(range(anchorNode, anchorOffset));
   }
 
   // convert from HTML to markdown
   else {
     const markdown = convertToMarkdown(b, n, o);
     const pre = create(`pre`);
-    pre.__cached = create(b.tagName);
+    pre.__cached_tag = b.tagName.toLowerCase();
     pre.textContent = markdown.text;
     pre.classList.add(`live-markdown`);
     pre.style.whiteSpace = `pre-wrap`;
