@@ -30,81 +30,120 @@ export function toggleMarkdown(element) {
   document.addEventListener(`pointerdown`, revert);
 }
 
-export function convertToMarkdown(node, offset = 0) {
-  let returnText = ``;
+export function convertToMarkdown(node, anchorNode, anchorOffset) {
+  console.log(node, anchorNode, anchorOffset);
+  let chunks = [];
 
-  if (node.nodeType === 3) {
-    returnText = node.textContent;
-    if (!node.parentNode.closest(`pre`)) {
-      returnText = node.textContent.replace(/\n?\s+/g, ` `);
+  const addChunk = (text, fromNode = undefined) => {
+    chunks.push({ text, node: fromNode });
+  };
+
+  __convertToMarkdown(node, addChunk);
+
+  let caret = 0;
+  for (const c of chunks) {
+    console.log(c.text);
+    if (c.node === anchorNode) {
+      caret += anchorOffset;
+      console.log(`end:`, caret);
+      break;
     }
-  } else if (node.nodeType === 1) {
+    caret += c.text.length;
+    console.log(`running:`, caret);
+  }
+
+  const text = chunks.map((c) => c.text).join(``);
+
+  console.log({ text, caret }, text.substring(caret, caret + 10));
+
+  return { text, caret };
+}
+
+function __convertToMarkdown(node, addChunk) {
+  // Text node
+  if (node.nodeType === 3) {
+    if (!node.parentNode.closest(`pre`)) {
+      addChunk(node.textContent.replace(/\n?\s+/g, ` `), node);
+    } else {
+      addChunk(node.textContent, node);
+    }
+  }
+
+  // DOM node
+  else if (node.nodeType === 1) {
     const tag = node.tagName.toLowerCase();
-    returnText = Array.from(node.childNodes)
-      .map((c) => {
-        const { text, offset: o } = convertToMarkdown(c);
-        offset += o;
-        return text;
-      })
-      .join(``);
+
+    // prefix chunks
     if (tag === `h1`) {
-      returnText = `# ${returnText}`;
-      offset += 2;
+      addChunk(`# `);
     }
     if (tag === `h2`) {
-      returnText = `## ${returnText}`;
-      offset += 3;
+      addChucnk(`## `);
     }
     if (tag === `h3`) {
-      returnText = `### ${returnText}`;
-      offset += 4;
+      addChunk(`### `);
     }
     if (tag === `h4`) {
-      returnText = `#### ${returnText}`;
-      offset += 5;
+      addChunk(`#### `);
     }
     if (tag === `strong`) {
-      returnText = `**${returnText}**`;
-      offset += 2;
+      addChunk(`**`);
     }
     if (tag === `em`) {
-      returnText = `*${returnText}*`;
-      offset += 1;
+      addChunk(`_`);
     }
     if (tag === `sub`) {
-      returnText = `<sub>${returnText}</sub>`;
-      offset += 5;
+      addChunk(`<sub>`);
     }
     if (tag === `sup`) {
-      returnText = `<sup>${returnText}</sup>`;
-      offset += 5;
+      addChunk(`<sup>`);
     }
     if (tag === `a`) {
-      returnText = `[${returnText}](${node.href})`;
-      offset += 1;
+      addChunk(`[`);
     }
     if (tag === `code`) {
-      if (returnText.includes("`")) {
-        returnText = `\`\`${returnText}\`\``;
-        offset += 2;
-      } else {
-        returnText = `\`${returnText}\``;
-        offset += 1;
-      }
+      addChunk("``");
     }
     if (tag === `li`) {
       const type = node.parentNode.tagName.toLowerCase();
       if (type === `ol`) {
-        returnText = `1. ${returnText}\n`;
-        offset += 3;
+        addChunk(`1. `);
+        // returnText = `1. ${returnText}\n`;
       }
       if (type === `ul`) {
-        returnText = `* ${returnText}\n`;
-        offset += 3;
+        addChunk(`* `);
+        // returnText = `* ${returnText}\n`;
       }
     }
+
+    // child chunks
+    for (const c of node.childNodes) {
+      __convertToMarkdown(c, addChunk);
+    }
+
+    // suffix chunks
+    if ([`h1`, `h2`, `h3`, `h4`, `li`].includes(tag)) {
+      addChunk(`\n`);
+    }
+    if (tag === `strong`) {
+      addChunk(`**`);
+    }
+    if (tag === `em`) {
+      addChunk(`_`);
+    }
+    if (tag === `sub`) {
+      addChunk(`</sub>`);
+    }
+    if (tag === `sup`) {
+      addChunk(`</sup>`);
+    }
+    if (tag === `a`) {
+      addChunk(`](${node.href})`);
+    }
+    if (tag === `code`) {
+      addChunk("``");
+    }
   }
-  return { text: returnText, offset };
 }
 
 export function convertFromMarkDown({ textContent }) {

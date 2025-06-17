@@ -3,14 +3,11 @@
  */
 
 import { Editable, OS } from "../constants.js";
-import { getFirstTextNode } from "../utils.js";
+import { getFirstTextNode, getLastTextNode } from "../utils.js";
 import { convertFromMarkDown, convertToMarkdown } from "../markdown.js";
 
 const blocks = [`h1`, `h2`, `h3`, `h4`, `p`, `ol`, `ul`, `pre`];
 const cosmeticsMaster = [`strong`, `em`, `code`, `s`, `sup`, `sub`];
-
-document.body.contentEditable = true;
-document.body.spellcheck = true;
 
 const todo = (...args) => console.warn(...args);
 const fixme = (...args) => console.error(...args);
@@ -21,6 +18,26 @@ const range = (sn, so, en, eo) => {
   if (en) r.setEnd(en, eo);
   return r;
 };
+
+// In order to make sure caret positions are sequential,
+// we need to force-collapse white space in all text nodes!
+const tree = document.createTreeWalker(document.body, 4, () => 1); // "text node" + "accepted"
+for (let tn = tree.nextNode(); tn; tn = tree.nextNode()) {
+  tn.textContent = tn.textContent.replace(/\n?\s+/g, ` `);
+}
+
+// Also remove any leading and trailing white space from
+// block level elements, because that's going to cause dumb
+// problems wrt caret placement, too.
+document.querySelectorAll(Editable.join(`,`)).forEach((e) => {
+  const first = getFirstTextNode(e);
+  first.textContent = first.textContent.replace(/^\s+/, ``);
+  const last = getLastTextNode(e);
+  last.textContent = last.textContent.replace(/\s+$/, ``);
+});
+
+document.body.contentEditable = true;
+document.body.spellcheck = true;
 
 const handlers = {
   // cosmetic handlers
@@ -332,14 +349,24 @@ function removeMarkup(tag, s, offset, e, contained, cosmetics) {
   s.addRange(r);
 }
 
+/**
+ * ...
+ */
 function toggleMarkdown(evt, element) {
   evt?.preventDefault?.();
   let target;
   const s = window.getSelection();
-  const b = element ?? s.anchorNode.parentNode.closest(blocks.join(`,`));
+  const n = s.anchorNode;
+  const o = s.anchorOffset;
+  const b = element ?? n.parentNode.closest(blocks.join(`,`));
+  const isMarkDownBlock = b.classList.contains(`live-markdown`);
+
+  todo(
+    `we still need to make sure to update the cursor when this toggle happens`
+  );
 
   // convert from markdown to HTML
-  if (b.classList.contains(`live-markdown`)) {
+  if (isMarkDownBlock) {
     const original = b.__cached;
     const nodes = convertFromMarkDown(b);
     for (const c of nodes) original.appendChild(c);
@@ -349,21 +376,15 @@ function toggleMarkdown(evt, element) {
 
   // convert from HTML to markdown
   else {
-    const markdown = convertToMarkdown(b);
+    const markdown = convertToMarkdown(b, n, o);
     const pre = create(`pre`);
     pre.__cached = create(b.tagName);
-    pre.textContent = markdown.text.trim();
+    pre.textContent = markdown.text;
     pre.classList.add(`live-markdown`);
     pre.style.whiteSpace = `pre-wrap`;
     b.parentNode.replaceChild(pre, b);
-    target = getFirstTextNode(pre);
-  }
-
-  todo(`figure out where the heck to put the cursor`); // TODO
-
-  if (!element) {
-    const r = range(target, 0);
+    target = pre.childNodes[0];
     s.removeAllRanges();
-    s.addRange(r);
+    s.addRange(range(target, markdown.caret));
   }
 }

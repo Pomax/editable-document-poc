@@ -28,10 +28,18 @@ export function getFirstTextNode(e) {
   if (e.nodeType === 3) return e;
   const first = e.childNodes[0];
   if (!first) {
-    console.log(`hmmmmm`, e);
     throw new Error(`there is no text node to be found`);
   }
   return getFirstTextNode(first);
+}
+
+export function getLastTextNode(e) {
+  if (e.nodeType === 3) return e;
+  const last = Array.from(e.childNodes).at(-1);
+  if (!last) {
+    throw new Error(`there is no text node to be found`);
+  }
+  return getLastTextNode(last);
 }
 
 export function replaceWith(element, replacements) {
