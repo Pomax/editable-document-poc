@@ -103,7 +103,8 @@ options.innerHTML = labels
 
 function updateEditBar(s = window.getSelection()) {
   const e = s.anchorNode.parentNode;
-  if (e && !e.closest(`.live-markdown`)) {
+  const liveMarkdown = !!e.closest(`.live-markdown`);
+  if (e) {
     const eTag = e.tagName.toLowerCase();
     let block = e.closest(Editable.join(`,`));
     if (block) {
@@ -115,12 +116,23 @@ function updateEditBar(s = window.getSelection()) {
       if (y < 50) {
         setDims(options, x, y + h + 10);
       } else setDims(options, x, y - 40);
+      options.querySelectorAll(`button`).forEach((b) => {
+        const label = b.textContent;
+        b.disabled = !(
+          !liveMarkdown ||
+          label === `markdown` ||
+          label === `all`
+        );
+      });
       options
         .querySelectorAll(`.active`)
         .forEach((e) => e.classList.remove(`active`));
-      options
-        .querySelectorAll(`#btn-${bTag}, #btn-${eTag}`)
-        .forEach((e) => e.classList.add(`active`));
+      options.querySelector(`#btn-${bTag}`).classList.add(`active`);
+      cosmeticsMaster.forEach((tag) => {
+        if (e.closest(tag)) {
+          options.querySelector(`#btn-${tag}`).classList.add(`active`);
+        }
+      });
       return;
     }
   }
@@ -133,6 +145,7 @@ options.addEventListener(`pointerdown`, (evt) => {
   if (id !== name) {
     evt.preventDefault();
     evt.stopPropagation();
+    if (options.querySelector(`#btn-${name}`).disabled) return;
     name = name.replace(`h`, ``);
     console.log(`pressing ${name}`);
     handlers[name]();
