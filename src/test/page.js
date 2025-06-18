@@ -154,6 +154,15 @@ options.addEventListener(`pointerdown`, (evt) => {
  * ...
  */
 document.addEventListener(`pointerup`, (evt) => {
+  const { target } = evt;
+  const tag = target.tagName.toLowerCase();
+  if (tag === `html` || tag === `body`) {
+    document
+      .querySelectorAll(`.highlight`)
+      .forEach((e) => e.classList.remove(`highlight`));
+    return options.setAttribute(`hidden`, `hidden`);
+  }
+
   const s = window.getSelection();
   highlight(s);
   updateEditBar(s);
