@@ -105,12 +105,15 @@ html {
       align-items: center;
       row-gap: 2px;
       column-gap: 2px;
-      padding-left: 1em;
+      padding: 0.25em 1em;
 
       background: #02ff78;
       color: #333;
       border: 1px solid black;
       box-sizing: border-box;
+
+      width: fit-content;
+      height: fit-content;
 
       & button {
         border: 1px solid #444;

@@ -5,11 +5,16 @@
  */
 
 import { Editable, OS } from "../constants.js";
-import { getFirstTextNode, getLastTextNode, replaceWith } from "../utils.js";
+import {
+  getFirstTextNode,
+  getLastTextNode,
+  replaceWith,
+  setDims,
+} from "../utils.js";
 import { convertFromMarkDown, convertToMarkdown } from "../markdown.js";
 
 const blocks = [`h1`, `h2`, `h3`, `h4`, `p`, `ol`, `ul`, `pre`];
-const cosmeticsMaster = [`strong`, `em`, `code`, `s`, `sup`, `sub`];
+const cosmeticsMaster = [`strong`, `em`, `code`, `del`, `sup`, `sub`];
 
 const todo = (...args) => console.warn(...args);
 const fixme = (...args) => console.error(...args);
@@ -42,29 +47,97 @@ document.body.contentEditable = true;
 document.body.spellcheck = true;
 
 const handlers = {
-  // cosmetic handlers
-  b: (evt) => toggleSelection(`strong`, evt),
-  c: (evt) => toggleSelection(`code`, evt),
-  i: (evt) => toggleSelection(`em`, evt),
-  s: (evt) => toggleSelection(`s`, evt),
-  ArrowUp: (evt) => toggleSelection(`sup`, evt),
-  ArrowDown: (evt) => toggleSelection(`sub`, evt),
   // block handlers
-  1: (evt) => changeBlock(`h1`, evt),
-  2: (evt) => changeBlock(`h2`, evt),
-  3: (evt) => changeBlock(`h3`, evt),
-  4: (evt) => changeBlock(`h4`, evt),
+  h1: (evt) => changeBlock(`h1`, evt),
+  h2: (evt) => changeBlock(`h2`, evt),
+  h3: (evt) => changeBlock(`h3`, evt),
+  h4: (evt) => changeBlock(`h4`, evt),
   p: (evt) => changeBlock(`p`, evt),
-  u: (evt) => changeBlock(`ul`, evt),
-  o: (evt) => changeBlock(`ol`, evt),
-  e: (evt) => changeBlock(`pre`, evt),
+  ul: (evt) => changeBlock(`ul`, evt),
+  ol: (evt) => changeBlock(`ol`, evt),
+  pre: (evt) => changeBlock(`pre`, evt),
+  // cosmetic handlers
+  strong: (evt) => toggleSelection(`strong`, evt),
+  code: (evt) => toggleSelection(`code`, evt),
+  del: (evt) => toggleSelection(`del`, evt),
+  em: (evt) => toggleSelection(`em`, evt),
+  // unusual cosmetic handlers
+  sup: (evt) => toggleSelection(`sup`, evt),
+  sub: (evt) => toggleSelection(`sub`, evt),
   // markdown toggle
-  "/": (evt) => toggleMarkdown(evt),
-  // selection
-  a: (evt) => selectBlock(evt),
+  markdown: (evt) => toggleMarkdown(evt),
+  // select-all
+  all: (evt) => selectBlock(evt),
+};
+
+const keyHandlers = {
+  1: (evt) => handlers.h1(evt),
+  2: (evt) => handlers.h2(evt),
+  3: (evt) => handlers.h3(evt),
+  4: (evt) => handlers.h4(evt),
+  p: (evt) => handlers.p(evt),
+  u: (evt) => handlers.ul(evt),
+  o: (evt) => handlers.ol(evt),
+  e: (evt) => handlers.pre(evt),
+  b: (evt) => handlers.strong(evt),
+  c: (evt) => handlers.code(evt),
+  d: (evt) => handlers.del(evt),
+  i: (evt) => handlers.em(evt),
+  ArrowUp: (evt) => handlers.sup(evt),
+  ArrowDown: (evt) => handlers.sub(evt),
+  "/": (evt) => handlers.markdown(evt),
+  a: (evt) => handlers.all(evt),
 };
 
 const lastDown = {};
+
+const options = document.createElement(`div`);
+options.setAttribute(`hidden`, `hidden`);
+options.classList.add(`edit-options`, `ignore-for-diffing`);
+document.body.append(options);
+
+const labels = Object.keys(handlers);
+options.innerHTML = labels
+  .map((label) => `<button id="btn-${label}">${label}</button>`)
+  .join(`\n`);
+
+function updateEditBar(s = window.getSelection()) {
+  const e = s.anchorNode.parentNode;
+  if (e && !e.closest(`.live-markdown`)) {
+    const eTag = e.tagName.toLowerCase();
+    let block = e.closest(Editable.join(`,`));
+    if (block) {
+      const bTag = block.tagName.toLowerCase();
+      console.log(eTag, bTag);
+      const { x, y, height: h } = block.getBoundingClientRect();
+      options.removeAttribute(`hidden`);
+      fixme(`Magic constants abound here, and there should be exactly zero`);
+      if (y < 50) {
+        setDims(options, x, y + h + 10);
+      } else setDims(options, x, y - 40);
+      options
+        .querySelectorAll(`.active`)
+        .forEach((e) => e.classList.remove(`active`));
+      options
+        .querySelectorAll(`#btn-${bTag}, #btn-${eTag}`)
+        .forEach((e) => e.classList.add(`active`));
+      return;
+    }
+  }
+  options.setAttribute(`hidden`, `hidden`);
+}
+
+options.addEventListener(`pointerdown`, (evt) => {
+  const { id } = evt.target;
+  let name = id.replace(`btn-`, ``);
+  if (id !== name) {
+    evt.preventDefault();
+    evt.stopPropagation();
+    name = name.replace(`h`, ``);
+    console.log(`pressing ${name}`);
+    handlers[name]();
+  }
+});
 
 /**
  * ...
@@ -72,8 +145,7 @@ const lastDown = {};
 document.addEventListener(`pointerup`, (evt) => {
   const s = window.getSelection();
   highlight(s);
-  const e = s.anchorNode.parentNode.closest(Editable.join(`,`));
-  todo(`show the block button bar`, e);
+  updateEditBar(s);
 });
 
 /**
@@ -83,7 +155,8 @@ document.addEventListener(`keydown`, (evt) => {
   const { key, ctrlKey, metaKey } = evt;
   const special = OS === `mac` ? metaKey : ctrlKey;
   if (special) {
-    handlers[key]?.(evt);
+    keyHandlers[key]?.(evt);
+    updateEditBar();
   } else {
     const s = window.getSelection();
     highlight(s);
@@ -99,6 +172,7 @@ document.addEventListener(`keyup`, (evt) => {
   const { markdown } = lastDown;
   const s = window.getSelection();
   highlight(s);
+  updateEditBar(s);
 
   let e = s.anchorNode;
   if (e?.nodeType === 3) e = e.parentNode;
@@ -119,7 +193,7 @@ document.addEventListener(`keyup`, (evt) => {
       const last = nodes.at(-1);
       replaceWith(n, nodes);
       s.removeAllRanges();
-      return s.addRange(range(last, 0));
+      s.addRange(range(last, 0));
     }
   }
 
@@ -156,7 +230,7 @@ function highlight(s) {
  * ...
  */
 function changeBlock(tag, evt) {
-  evt.preventDefault();
+  evt?.preventDefault();
   const s = window.getSelection();
   const {
     anchorNode: sn,
@@ -412,7 +486,7 @@ function toggleMarkdown(evt, element) {
  * ...
  */
 function selectBlock(evt) {
-  evt.preventDefault();
+  evt?.preventDefault();
   const s = window.getSelection();
   const a = s.anchorNode;
   const block = a.parentNode.closest(Editable.join(`,`));

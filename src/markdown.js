@@ -86,6 +86,9 @@ function __convertToMarkdown(node, addChunk) {
     if (tag === `em`) {
       addChunk(`_`);
     }
+    if (tag === `del`) {
+      addChunk(`~`);
+    }
     if (tag === `sub`) {
       addChunk(`<sub>`);
     }
@@ -124,6 +127,9 @@ function __convertToMarkdown(node, addChunk) {
     }
     if (tag === `em`) {
       addChunk(`_`);
+    }
+    if (tag === `del`) {
+      addChunk(`~`);
     }
     if (tag === `sub`) {
       addChunk(`</sub>`);
@@ -177,6 +183,7 @@ export function convertFromMarkDown({ textContent }, caret = 0) {
     .replace(/(^|[^*])\*\*([^<*]+)\*\*/g, `$1<strong>$2</strong>`)
     .replace(/(^|[^*])\*([^<*]+)\*/g, `$1<em>$2</em>`)
     .replace(/(^|[^_])_([^<]+)_/g, `$1<em>$2</em>`)
+    .replace(/(^|[^~])~([^<]+)~/g, `$1<del>$2</del>`)
     // This one's obviously weird: backticks inside double backticks need to be
     // safified so we don't turn ``th`i`s`` into <code>th<code>i</code>s</code>
     // and instead turn it into <code>th`i`s</code>...

@@ -14,7 +14,7 @@ export function selectElement(element) {
   selection.addRange(range);
 }
 
-export function setDims(e, x = 0, y = 0, w = 0, h = 0) {
+export function setDims(e, x = 0, y = 0, w = `fit-content`, h = `fit-content`) {
   const val = (v) => (typeof v === `number` ? v + `px` : v);
   Object.assign(e.style, {
     top: `calc(${window.scrollY}px + ${val(y)})`,
