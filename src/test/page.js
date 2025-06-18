@@ -1,9 +1,11 @@
 /**
- * ...
+ * I, Pomax, dedicate this work to the public domain.
+ * Where all code like this belongs.
+ * You slap an MIT license on this, you've already added too much license.
  */
 
 import { Editable, OS } from "../constants.js";
-import { getFirstTextNode, getLastTextNode } from "../utils.js";
+import { getFirstTextNode, getLastTextNode, replaceWith } from "../utils.js";
 import { convertFromMarkDown, convertToMarkdown } from "../markdown.js";
 
 const blocks = [`h1`, `h2`, `h3`, `h4`, `p`, `ol`, `ul`, `pre`];
@@ -58,6 +60,8 @@ const handlers = {
   e: (evt) => changeBlock(`pre`, evt),
   // markdown toggle
   "/": (evt) => toggleMarkdown(evt),
+  // selection
+  a: (evt) => selectBlock(evt),
 };
 
 const lastDown = {};
@@ -97,12 +101,26 @@ document.addEventListener(`keyup`, (evt) => {
   highlight(s);
 
   let e = s.anchorNode;
-  if (e.nodeType === 3) e = e.parentNode;
+  if (e?.nodeType === 3) e = e.parentNode;
+
+  const b = e?.closest(`.live-markdown`);
 
   if (markdown) {
-    const b = e.closest(`.live-markdown`);
-    if (!b) toggleMarkdown(undefined, markdown);
+    if (e && !b) toggleMarkdown(undefined, markdown);
     lastDown.markdown = false;
+  }
+
+  // Did we just type markdown, outside of markdown
+  // context? If so, we need to insta-convert that.
+  if (e && !b) {
+    const n = s.anchorNode;
+    const { nodes } = convertFromMarkDown(n);
+    if (nodes.length > 1) {
+      const last = nodes.at(-1);
+      replaceWith(n, nodes);
+      s.removeAllRanges();
+      return s.addRange(range(last, 0));
+    }
   }
 
   // Enter may create a new div, and we want paragraphs instead.
@@ -388,4 +406,18 @@ function toggleMarkdown(evt, element) {
     s.removeAllRanges();
     s.addRange(range(target, markdown.caret));
   }
+}
+
+/**
+ * ...
+ */
+function selectBlock(evt) {
+  evt.preventDefault();
+  const s = window.getSelection();
+  const a = s.anchorNode;
+  const block = a.parentNode.closest(Editable.join(`,`));
+  const first = getFirstTextNode(block);
+  const last = getLastTextNode(block);
+  s.removeAllRanges();
+  s.addRange(range(first, 0, last, last.textContent.length));
 }

@@ -11,28 +11,33 @@
 
 <body>
   <h1>Creating an editable page</h1>
-  <main>
-    <p>First, a simple paragraph to test some cursor placement and relation</p>
 
+  <p>K, so, here's the deal:</p>
+
+  <main>
     <p>
       This is a text, and the idea is that we can put a cursor in here, even if
       <strong>some content has additional markup</strong>, whether that's
       single-level nested or <strong><em>multiple levels down</em></strong> and
-      then just edit content in place, true
+      then just edit content in place with a button bar and/or hotkeys,
       <a href="https://en.wikipedia.org/wiki/WYSIWYG">WYSIWYG</a> style. This
       relies on the <code>contenteditable</code> HTML attribute, which lets us
-      do a bunch of "what is the caret currently in?" checks, while also working
-      on both desktop and mobile. The one thing it <em>does not</em> need,
-      though, is a parallel textarea for tracking what you're typing. The
-      browser already knows how to do that. Although we'll see if that's still
-      true once we add code blocks to the mix. Syntax highlighting makes
-      things... weird.
+      do a bunch of "what is the caret currently in?" checks (in a way that
+      works on both desktop and mobile) so we can then "do stuff" like wrapping
+      text in tags, or removing tags, or changing tags, etc.
     </p>
 
     <p>
-      And of course, secretly that functionality isn't tied to "these two text
-      boxes", it works <strong>everywhere</strong> on this page. You click a
-      thing, it's editable, even if the HTML source code didn't say it was.
+      And of course, secretly that functionality isn't tied to "these fancy
+      boxes with a border", it works <strong>everywhere</strong> on this page.
+      You click a thing, it's editable, even if the HTML source code didn't say
+      it was.
+    </p>
+
+    <p>
+      But wait: there's more! You can also use ctrl-/ or cmd-/ to toggle a block
+      from using HTML to using markdown, so you can do your precision edits in
+      markdown, then come back to plain WYSIWYG editing.
     </p>
   </main>
 

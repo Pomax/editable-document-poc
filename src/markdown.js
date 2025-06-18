@@ -140,8 +140,9 @@ function __convertToMarkdown(node, addChunk) {
   }
 }
 
-export function convertFromMarkDown({ textContent }, caret) {
+export function convertFromMarkDown({ textContent }, caret = 0) {
   const caretMarker = `CARETMARKETCARETMARKER`;
+  const textLen = textContent.length;
 
   // TODO: it's possible for the caret to be "in" a tag rather than text,
   //       in which case I don't care enough to fix that in this PoC, the
@@ -149,7 +150,13 @@ export function convertFromMarkDown({ textContent }, caret) {
   //       and have a proper tokenizer/converter track where the caret
   //       should end up in the conversion result =P
   const good = (c, v = 1) => textContent.substring(c, c + v).match(/\w/);
-  if (!good(caret)) if (!good(caret, -1)) while (!good(caret)) caret++;
+  if (!good(caret)) {
+    if (caret > 0 && !good(caret, -1)) {
+      while (caret < textLen && !good(caret)) {
+        caret++;
+      }
+    }
+  }
 
   const text =
     textContent.substring(0, caret) +

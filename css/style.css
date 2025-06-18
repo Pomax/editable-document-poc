@@ -18,11 +18,14 @@
   h1 {
     font-size: 1.5rem !important;
     font-weight: bold;
+    text-align: center;
+    border-bottom: 1px solid #333;
   }
 
   h2 {
     font-size: 1.25rem !important;
     font-weight: bold;
+    border-bottom: 1px solid #333;
   }
 
   h3 {
