@@ -99,7 +99,8 @@ function __convertToMarkdown(node, addChunk) {
       addChunk(`[`);
     }
     if (tag === `code`) {
-      addChunk("``");
+      if (node.textContent.includes("`")) addChunk("``");
+      else addChunk("`");
     }
     if (tag === `li`) {
       const type = node.parentNode.tagName.toLowerCase();
@@ -141,7 +142,8 @@ function __convertToMarkdown(node, addChunk) {
       addChunk(`](${node.href})`);
     }
     if (tag === `code`) {
-      addChunk("``");
+      if (node.textContent.includes("`")) addChunk("``");
+      else addChunk("`");
     }
   }
 }

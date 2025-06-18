@@ -102,14 +102,14 @@ options.innerHTML = labels
   .join(`\n`);
 
 function updateEditBar(s = window.getSelection()) {
-  const e = s.anchorNode.parentNode;
+  let e = s.anchorNode;
+  if (!e) return;
+  if (e.nodeType === 3) e = e.parentNode;
   const liveMarkdown = !!e.closest(`.live-markdown`);
   if (e) {
-    const eTag = e.tagName.toLowerCase();
     let block = e.closest(Editable.join(`,`));
     if (block) {
       const bTag = block.tagName.toLowerCase();
-      console.log(eTag, bTag);
       const { x, y, height: h } = block.getBoundingClientRect();
       options.removeAttribute(`hidden`);
       fixme(`Magic constants abound here, and there should be exactly zero`);
@@ -146,8 +146,6 @@ options.addEventListener(`pointerdown`, (evt) => {
     evt.preventDefault();
     evt.stopPropagation();
     if (options.querySelector(`#btn-${name}`).disabled) return;
-    name = name.replace(`h`, ``);
-    console.log(`pressing ${name}`);
     handlers[name]();
   }
 });
@@ -203,10 +201,10 @@ document.addEventListener(`keyup`, (evt) => {
     const n = s.anchorNode;
     const { nodes } = convertFromMarkDown(n);
     if (nodes.length > 1) {
-      const last = nodes.at(-1);
+      fixme(`Cursor placement after substitution is 100% wonky`);
       replaceWith(n, nodes);
       s.removeAllRanges();
-      s.addRange(range(last, 0));
+      s.addRange(range(caret, 1));
     }
   }
 
@@ -221,6 +219,7 @@ document.addEventListener(`keyup`, (evt) => {
       const r = range(p.childNodes[0], 0);
       s.removeAllRanges();
       s.addRange(r);
+      updateEditBar(s);
     }
   }
 });
@@ -508,3 +507,7 @@ function selectBlock(evt) {
   s.removeAllRanges();
   s.addRange(range(first, 0, last, last.textContent.length));
 }
+
+fixme(`We can sometimes get spans. We never want spans.`);
+fixme(`Missing <a> support on the HTML side`);
+fixme(`Missing <figure><img><caption> support on the HTML side`);

@@ -22,9 +22,9 @@
       then just edit content in place with a button bar and/or hotkeys,
       <a href="https://en.wikipedia.org/wiki/WYSIWYG">WYSIWYG</a> style. This
       relies on the <code>contenteditable</code> HTML attribute, which lets us
-      do a bunch of "what is the caret currently in?" checks (in a way that
-      works on both desktop and mobile) so we can then "do stuff" like wrapping
-      text in tags, or removing tags, or changing tags, etc.
+      do a bunch of "where is the caret ("cursor") right now?" checks (in a way
+      that works on both desktop and mobile) so we can then "do stuff" like
+      wrapping text in tags, or removing tags, or changing tags, etc.
     </p>
 
     <p>
@@ -36,8 +36,9 @@
 
     <p>
       But wait: there's more! You can also use ctrl-/ or cmd-/ to toggle a block
-      from using HTML to using markdown, so you can do your precision edits in
-      markdown, then come back to plain WYSIWYG editing.
+      from being editable HTML to being editable markdown text and back, so you
+      can do your precision edits in markdown, then come back to plain WYSIWYG
+      editing.
     </p>
   </main>
 
@@ -46,68 +47,117 @@
   <ul>
     <li>clicking places the cursor</li>
     <li>arrow keys move the cursor</li>
-    <li>cursoring out of the element moves focus to the adjacent element</li>
     <li>typing (<em>unsurprisingly</em>) inserts text</li>
     <li>backspace removes to the left of the cursor</li>
     <li>delete removes to the right of the cursor</li>
     <li>cmd/ctrl-A selects all text in the current element</li>
     <li>clicking buttons in the button bar does things</li>
+    <li>You get hotkeys!</li>
   </ul>
 
-  <h2>How?</h2>
+  <h2>I get hotkeys?</h2>
 
   <p>
-    HTML elements contain text nodes, and text nodes can be turned into text
-    ranges with metrics that reflect the browser's rendered page. That means we
-    can keep track of a "cursor" and visualize that with a little red underline,
-    while also highlight the "larger block" that text is in by using a range
-    that covers the entire text and then highlighting the one or more client
-    rects that range covers.
+    Yeah, there's a bunch of ctrl (on linux/windows) or cmd (on mac) key
+    combinations to speed up your writing, just like a regular WYSIWYG editing
+    exerience. Just use ctrl/cmd + ...:
+  </p>
+
+  <ul>
+    <li>"1" through "4" to set the current block to a heading</li>
+    <li>"p" to make the current block a paragraph</li>
+    <li>"o" to make the current block am ordered list</li>
+    <li>"u" to make the current block an unordered list</li>
+    <li>"e" to make the current block a "pre" text block</li>
+  </ul>
+
+  <p>Additionally, there are the cosmetic combos:</p>
+
+  <ul>
+    <li>
+      "b" will mark text as "bold", but not really. Bold is a CSS thing, it
+      marks up the content as "strong".
+    </li>
+    <li>
+      "i" will mark text as "italic", but again, not really. It actually marks
+      it as "em" for emphasis
+    </li>
+    <li>
+      "s" will mark text as "strike-through", but you guessed it, no it doesn't,
+      it's "del" for "consider this deleted"
+    </li>
+    <li>"sub" will make text subscript</li>
+    <li>"sup" will make text superscript</li>
+  </ul>
+
+  <p>And then the two special combinations:</p>
+
+  <ul>
+    <li>"/" toggles between HTML and markdown edit modes</li>
+    <li>
+      "a" is the "select all" combination, except it doesn't, it selects
+      everything <em>only in the current block</em> because the number of times
+      you want to select the entire document are zero, with rounding.
+    </li>
+  </ul>
+
+  <h2>How does all this work?</h2>
+
+  <p>
+    Three core concepts: <code>contenteditable</code>, the
+    <a href="https://developer.mozilla.org/docs/Web/API/Selection">Selection</a>
+    object, and
+    <a href="https://developer.mozilla.org/docs/Web/API/Range">Ranges</a>.
+    "Content Editable" elements basically let you live-edit your HTML, with the
+    caret and text-selections being tracked by the global Selection object. This
+    lets you fairly easily not just find out where the cursor is at any given
+    time, but also lets you do things like select whatever word the cursor is
+    in, as well as which <em>HTML elements</em> that position is associated
+    with, so that you can do things like "find the cursor, then select the
+    entire word it's in, then wrap that text in <code>&lt;em&gt;</code>".
   </p>
 
   <p>
-    So we let the browser do most of the work in terms of editing the content,
-    and we provide controls for switching one type of content into another. this
-    is of course far from perfect because this is just a proof of concept, but
-    it highlights the fact that HTML is pretty uniquely suited to being an
-    editable document format.
+    The only tricky bit is making sure that the cursor ends up in the right
+    place after a change, which is generally a matter of "clearing the
+    selection, building a range, and saying which element and text offset it
+    represents, then making <em>that</em> the new selection". It's quite a
+    powerful API!
   </p>
 
-  <h2>But I can't click on links!</h2>
+  <h2>Bug! I can't click on links!</h2>
 
   <p>
-    Sure, but that's only because the entire document is currently editable.
-    Remove the <code>contenteditable</code> attribute on the body, and it's a
-    normal page again. Imagine this being an option you can toggle.
+    True, but that's because the document is currently editable. Remove the
+    <code>contenteditable</code> attribute on the body (or set the JS
+    <code>.contendEditable</code> property to false), and it's a normal page
+    again. Imagine this being an option you can toggle.
   </p>
 
   <h2>What's left?</h2>
 
+  <p>
+    There's a bunch of "this probably doesn't need to be in a PoC" like full
+    blown Markdown to HTML and HTML to Markdown converters (they're hilariously
+    simplistic at the moment!), but there's a few things that should probably
+    still be added before this is a complete enough PoC:
+  </p>
+
   <ul>
     <li>
-      Making the standard WYSIWYG functions work: tag toggling "works", simple
-      text wrapping and unwrapping "works", but only with selections (not
-      "cursor is on bold text, click to unbold"), and links and image buttons do
-      nothing at the moment, but overlap-markup (e.g. bolding across italics)
-      makes the code go "I have no idea what I'm doing here so I'll do nothing"
-      right now.
+      UI for working with links. Kind of core to "an HTML document", honestly.
     </li>
     <li>
-      Adding support for preformatted text blocks ("code blocks") without using
-      CodeMirror or the like. We're not "writing" code in this context, we're
-      just showing it.
+      UI for working with images. Which really means
+      <code>&lt;figure&gt;</code> HTML and the associated markdown.
     </li>
+    <li>Tables. Because tables for data is the correct use of tables.</li>
+    <li>Loading markdown files, because the idea is to build an editor.</li>
+    <li>Change tracking through OT/CRDT</li>
     <li>
-      Recording changes as some kind of OT/CRDT that can be rolled/played back.
-    </li>
-    <li>
-      Adding some smarts that lets you send those diffs back to your file system
-      (e.g., "save" would be pretty crucial to have if we want to edit pages)
-    </li>
-    <li>
-      Make this performant (I have some 50k word documents that this should
-      still work with, I don't want "editing the first paragraph" to be fast,
-      but "editing the last paragraph" take half an hour in bolding a word)
+      Related to which, using a custom edit history because the browser's
+      contenteditable history (unlike the History object) does not allow you to
+      slip in your own edits.
     </li>
   </ul>
 
