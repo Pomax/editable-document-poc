@@ -1,5 +1,6 @@
 import { Editable } from "./constants.js";
-import { setDims } from "./utils.js";
+import { getFirstTextNode, setDims } from "./utils.js";
+import { HTMLToMarkdown } from "./test/html-to-markdown.js";
 
 export function toggleMarkdown(element) {
   element = element.closest(Editable.join(`,`));
@@ -31,6 +32,8 @@ export function toggleMarkdown(element) {
 }
 
 export function convertToMarkdown(node, anchorNode, anchorOffset) {
+  // return { text: HTMLToMarkdown(node), caret: 0 };
+
   let chunks = [];
 
   const addChunk = (text, fromNode = undefined) => {
@@ -48,7 +51,10 @@ export function convertToMarkdown(node, anchorNode, anchorOffset) {
     caret += c.text.length;
   }
 
-  const text = chunks.map((c) => c.text).join(``);
+  const text = chunks
+    .map((c) => c.text)
+    .join(``)
+    .trim();
 
   return { text, caret };
 }
