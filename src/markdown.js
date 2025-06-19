@@ -72,7 +72,7 @@ function __convertToMarkdown(node, addChunk) {
       addChunk(`# `);
     }
     if (tag === `h2`) {
-      addChucnk(`## `);
+      addChunk(`## `);
     }
     if (tag === `h3`) {
       addChunk(`### `);
@@ -214,3 +214,7 @@ export function convertFromMarkDown({ textContent }, caret = 0) {
 
   return { nodes, anchorNode, anchorOffset };
 }
+
+window.getMarkdownVersion = () => {
+  return convertToMarkdown(document.body).text;
+};
