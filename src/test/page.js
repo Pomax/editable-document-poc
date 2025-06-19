@@ -14,7 +14,7 @@ import {
 import { convertFromMarkDown, convertToMarkdown } from "../markdown.js";
 
 const blocks = [`h1`, `h2`, `h3`, `h4`, `p`, `ol`, `ul`, `pre`];
-const cosmeticsMaster = [`strong`, `em`, `code`, `del`, `sup`, `sub`];
+const cosmeticsMaster = [`strong`, `em`, `code`, `del`, `sup`, `sub`, `a`];
 
 const todo = (...args) => console.warn(...args);
 const fixme = (...args) => console.error(...args);
@@ -61,6 +61,11 @@ const handlers = {
   code: (evt) => toggleSelection(`code`, evt),
   del: (evt) => toggleSelection(`del`, evt),
   em: (evt) => toggleSelection(`em`, evt),
+  a: (evt) =>
+    toggleSelection(`a`, evt, (a) => {
+      console.log(`after`, a);
+      if (a) a.href = ``;
+    }),
   // unusual cosmetic handlers
   sup: (evt) => toggleSelection(`sup`, evt),
   sub: (evt) => toggleSelection(`sub`, evt),
@@ -83,6 +88,7 @@ const keyHandlers = {
   c: (evt) => handlers.code(evt),
   d: (evt) => handlers.del(evt),
   i: (evt) => handlers.em(evt),
+  l: (evt) => handlers.a(evt),
   ArrowUp: (evt) => handlers.sup(evt),
   ArrowDown: (evt) => handlers.sub(evt),
   "/": (evt) => handlers.markdown(evt),
@@ -97,9 +103,12 @@ options.classList.add(`edit-options`, `ignore-for-diffing`);
 document.body.append(options);
 
 const labels = Object.keys(handlers);
-options.innerHTML = labels
-  .map((label) => `<button id="btn-${label}">${label}</button>`)
-  .join(`\n`);
+options.innerHTML =
+  labels
+    .map((label) => `<button id="btn-${label}">${label}</button>`)
+    .join(`\n`) +
+  `<span style="flex-basis: 100%; height: 0"></span>` +
+  `<span class="extra"></span>`;
 
 function updateEditBar(s = window.getSelection()) {
   let e = s.anchorNode;
@@ -107,6 +116,7 @@ function updateEditBar(s = window.getSelection()) {
   if (e.nodeType === 3) e = e.parentNode;
   const liveMarkdown = !!e.closest(`.live-markdown`);
   if (e) {
+    const eTag = e.tagName.toLowerCase();
     let block = e.closest(Editable.join(`,`));
     if (block) {
       const bTag = block.tagName.toLowerCase();
@@ -133,6 +143,20 @@ function updateEditBar(s = window.getSelection()) {
           options.querySelector(`#btn-${tag}`).classList.add(`active`);
         }
       });
+      const extras = options.querySelector(`.extra`);
+      extras.innerHTML = ``;
+      if (eTag === `a`) {
+        extras.innerHTML = `
+          <label>URL:</label>
+          <input type="url" value="${e.href}" style="width: 40em">
+        `;
+        extras
+          .querySelector(`[type="url"]`)
+          .addEventListener(`input`, (evt) => {
+            e.href = evt.target.value;
+          });
+        setDims(options, x, y - 65);
+      }
       return;
     }
   }
@@ -163,6 +187,10 @@ document.addEventListener(`pointerup`, (evt) => {
     return options.setAttribute(`hidden`, `hidden`);
   }
 
+  if (target.closest(`.edit-options`)) {
+    return;
+  }
+
   const s = window.getSelection();
   highlight(s);
   updateEditBar(s);
@@ -172,6 +200,8 @@ document.addEventListener(`pointerup`, (evt) => {
  * ...
  */
 document.addEventListener(`keydown`, (evt) => {
+  if (evt.target.closest(`.edit-options`)) return;
+
   const { key, ctrlKey, metaKey } = evt;
   const special = OS === `mac` ? metaKey : ctrlKey;
   if (special) {
@@ -188,6 +218,8 @@ document.addEventListener(`keydown`, (evt) => {
  * ...
  */
 document.addEventListener(`keyup`, (evt) => {
+  if (evt.target.closest(`.edit-options`)) return;
+
   const { key } = evt;
   const { markdown } = lastDown;
   const s = window.getSelection();
@@ -275,7 +307,7 @@ function changeBlock(tag, evt) {
 /**
  * ...
  */
-function toggleSelection(tag, evt) {
+function toggleSelection(tag, evt, afterCreating) {
   evt?.preventDefault();
 
   const s = window.getSelection();
@@ -296,18 +328,16 @@ function toggleSelection(tag, evt) {
   const cosmetics = cosmeticsMaster.filter((v) => v !== tag);
 
   if (s.toString() === ``) {
-    toggleEmptySelection(tag, s, offset, e, contained, cosmetics);
+    const n = toggleEmptySelection(tag, s, offset, e, contained, cosmetics);
+    afterCreating?.(n);
   } else {
-    toggleRealSelection(tag, s, offset, e, contained, cosmetics);
+    const n = toggleRealSelection(tag, s, offset, e, contained, cosmetics);
+    afterCreating?.(n);
   }
 
   let block = e.closest(Editable.join(`,`));
   if (!block) {
     block = s.anchorNode.parentNode.closest(Editable.join(`,`));
-  }
-  if (block) {
-    const markdown = convertToMarkdown(block).text.trim();
-    console.log(markdown);
   }
 }
 
@@ -316,9 +346,9 @@ function toggleSelection(tag, evt) {
  */
 function toggleEmptySelection(tag, s, offset, e, contained, cosmetics) {
   if (e.tagName.toLowerCase() !== tag) {
-    addMarkup(tag, s, offset, e, contained, cosmetics);
+    return addMarkup(tag, s, offset, e, contained, cosmetics);
   } else {
-    removeMarkup(tag, s, offset, e, contained, cosmetics);
+    return removeMarkup(tag, s, offset, e, contained, cosmetics);
   }
 }
 
@@ -328,18 +358,19 @@ function toggleEmptySelection(tag, s, offset, e, contained, cosmetics) {
 function toggleRealSelection(tag, s, offset, e, contained, cosmetics) {
   console.log(`deal with selection`);
 
+  let node = undefined;
   const overlap = s.anchorNode !== s.focusNode;
 
   // The simple case is if we're not dealing with markup overlap
   if (!overlap) {
-    // And wrap that in a <strong> element.
     const n = create(tag);
     const r = s.getRangeAt(0);
     r.surroundContents(n);
+    node = n.parentNode;
 
     // Then set the caret position inside that element based on
-    // what the offset was, minute the length of the content
-    // up to the newly created element
+    // what the offset was, minus the length of the content up
+    // to the newly created element
     const p = n.previousSibling;
     const m = p.textContent.length;
     const c = offset - m;
@@ -354,6 +385,8 @@ function toggleRealSelection(tag, s, offset, e, contained, cosmetics) {
   else {
     console.warn(`this is not advised. Why are you overlapping markup?`);
   }
+
+  return node;
 }
 
 /**
@@ -377,9 +410,6 @@ function addMarkup(tag, s, offset, e, contained, cosmetics) {
   }
 
   const r = s.getRangeAt(0);
-  console.log(r);
-
-  // And wrap that in a <strong> element.
   const n = create(tag);
   r.surroundContents(n);
 
@@ -400,6 +430,8 @@ function addMarkup(tag, s, offset, e, contained, cosmetics) {
   }
   s.removeAllRanges();
   s.addRange(r);
+
+  return n;
 }
 
 /**
@@ -410,7 +442,6 @@ function removeMarkup(tag, s, offset, e, contained, cosmetics) {
   const p = e.parentNode;
   const n = Array.from(e.childNodes);
 
-  console.log(`removing markup`, e);
   if (!contained) {
     // first, find the caret offset to the element we clicked
     let v = 0;

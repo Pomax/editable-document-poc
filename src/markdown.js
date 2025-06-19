@@ -208,7 +208,7 @@ export function convertFromMarkDown({ textContent }, caret = 0) {
     .replace(/`([^<]+)`/g, `<code>$1</code>`)
     .replace(/⁜/, "`")
     // links aren't super special
-    .replace(/\[([^<]+)\]\(([^<]+)\)/g, `<a href="$2">$1</a>`);
+    .replace(/\[([^<()\]]+)\]\(([^<()]+)\)/g, `<a href="$2">$1</a>`);
 
   const div = document.createElement(`div`);
   div.innerHTML = html.trim();
