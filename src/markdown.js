@@ -54,6 +54,11 @@ export function convertToMarkdown(node, anchorNode, anchorOffset) {
 }
 
 function __convertToMarkdown(node, addChunk) {
+  // divs are irrelevant in writing land: ignore them
+  if (node?.classList?.contains(`ignore-for-diffing`)) {
+    return ``;
+  }
+
   // Text node
   if (node.nodeType === 3) {
     if (!node.parentNode.closest(`pre`)) {
@@ -68,6 +73,9 @@ function __convertToMarkdown(node, addChunk) {
     const tag = node.tagName.toLowerCase();
 
     // prefix chunks
+    if ([`h1`, `h2`, `h3`, `h4`].includes(tag)) {
+      addChunk(`\n`);
+    }
     if (tag === `h1`) {
       addChunk(`# `);
     }
@@ -79,6 +87,9 @@ function __convertToMarkdown(node, addChunk) {
     }
     if (tag === `h4`) {
       addChunk(`#### `);
+    }
+    if (tag === `p`) {
+      addChunk(`\n`);
     }
     if (tag === `strong`) {
       addChunk(`**`);
@@ -120,7 +131,10 @@ function __convertToMarkdown(node, addChunk) {
     }
 
     // suffix chunks
-    if ([`h1`, `h2`, `h3`, `h4`, `li`].includes(tag)) {
+    if ([`h1`, `h2`, `h3`, `h4`, `p`, `li`].includes(tag)) {
+      addChunk(`\n`);
+    }
+    if (tag === `p`) {
       addChunk(`\n`);
     }
     if (tag === `strong`) {
@@ -216,5 +230,5 @@ export function convertFromMarkDown({ textContent }, caret = 0) {
 }
 
 window.getMarkdownVersion = () => {
-  return convertToMarkdown(document.body).text;
+  return convertToMarkdown(document.body).text.trim();
 };
