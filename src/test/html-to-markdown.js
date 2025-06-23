@@ -1,4 +1,33 @@
-export const Editable = [`pre`, `p`, `h1`, `h2`, `h3`, `h4`, `ul`, `ol`, `img`];
+const caretMarker = `CARETMARKETCARETMARKER`;
+
+export const Editable = [
+  `blockquote`,
+  `h1`,
+  `h2`,
+  `h3`,
+  `h4`,
+  `img`,
+  `ol`,
+  `p`,
+  `pre`,
+  `table`,
+  `ul`,
+];
+
+export function convertToMarkdown(block, textNode, offset) {
+  textNode.textContent =
+    textNode.textContent.substring(0, offset) +
+    caretMarker +
+    textNode.textContent.substring(offset);
+
+  const markdown = HTMLToMarkdown(block);
+  const caret = markdown.indexOf(caretMarker);
+
+  return {
+    text: markdown.replace(caretMarker, ``),
+    caret,
+  };
+}
 
 export function HTMLToMarkdown(...nodes) {
   const markdown = nodes
@@ -6,6 +35,9 @@ export function HTMLToMarkdown(...nodes) {
     .join(``);
   return markdown;
 }
+
+// global binding because of course.
+window.HTMLToMarkdown = HTMLToMarkdown;
 
 function getText(node) {
   const nextTag = node.nextSibling?.tagName?.toLowerCase();
@@ -20,14 +52,18 @@ function nodeToMarkdown(node) {
   const tag = node.tagName.toLowerCase();
 
   // Block elements
-  if (tag === `h1`) return headingToMarkdown(1, node);
-  if (tag === `h2`) return headingToMarkdown(2, node);
-  if (tag === `h3`) return headingToMarkdown(3, node);
-  if (tag === `h4`) return headingToMarkdown(4, node);
+  if (tag === `h1`) return headingToMarkdown(node, 1);
+  if (tag === `h2`) return headingToMarkdown(node, 2);
+  if (tag === `h3`) return headingToMarkdown(node, 3);
+  if (tag === `h4`) return headingToMarkdown(node, 4);
   if (tag === `p`) return paragraphToMarkdown(node);
-  if (tag === `ul`) return listToMarkdown(node, false);
   if (tag === `ol`) return listToMarkdown(node, true);
+  if (tag === `ul`) return listToMarkdown(node, false);
   if (tag === `pre`) return preformattedToMarkdown(node);
+  if (tag === `blockquote`) return paragraphToMarkdown(node, `> `);
+
+  // tables are pretty special
+  if (tag === `table`) return tableToMarkdown(node);
 
   // Cosmetic elements
   if (tag === `strong`) return cosmeticMarkdown(node, `**`);
@@ -42,12 +78,12 @@ function nodeToMarkdown(node) {
   return HTMLToMarkdown(...node.childNodes);
 }
 
-function headingToMarkdown(n, { childNodes }) {
+function headingToMarkdown({ childNodes }, n = 1) {
   return `${`#`.repeat(n)} ${HTMLToMarkdown(...childNodes)}\n\n`;
 }
 
-function paragraphToMarkdown({ childNodes }) {
-  return `${HTMLToMarkdown(...childNodes)}\n\n`;
+function paragraphToMarkdown({ childNodes }, prefix = ``) {
+  return `${prefix}${HTMLToMarkdown(...childNodes)}\n\n`;
 }
 
 function listToMarkdown({ childNodes }, ordered = false) {
@@ -73,10 +109,34 @@ function cosmeticMarkdown({ childNodes }, opener, closer = opener) {
 }
 
 function codeToMarkdown(node) {
-  markup = node.textContent.includes("`") ? "``" : "`";
+  const markup = node.textContent.includes("`") ? "``" : "`";
   return cosmeticMarkdown(node, markup);
 }
 
-function linkToMarkdown({ href, childNodes }) {
+function linkToMarkdown({ childNodes, href }) {
   return `[${HTMLToMarkdown(...childNodes)}](${href})`;
+}
+
+function tableToMarkdown(node) {
+  let header = ``;
+
+  const rows = Array.from(node.querySelectorAll(`tbody tr`));
+  const colCount = rows[0].querySelectorAll(`td`).length;
+
+  // we only accept tables with thead/tbody
+  const headings = Array.from(node.querySelectorAll(`thead tr th`));
+  if (headings.length) {
+    header =
+      `| ${headings.map((e) => e.textContent).join(` | `)} |\n` +
+      `|-${`|-`.repeat(colCount - 1)}|\n`;
+  }
+
+  const convertCell = (cell) => HTMLToMarkdown(...cell.childNodes);
+  const convertRow = (row) =>
+    `| ${Array.from(row.querySelectorAll(`td`))
+      .map(convertCell)
+      .join(` | `)} |`;
+  const data = rows.map(convertRow).join(`\n`) + `\n`;
+
+  return header + data;
 }

@@ -186,10 +186,17 @@ export function convertFromMarkDown({ textContent }, caret = 0) {
     }
   }
 
-  const text =
+  let text =
     textContent.substring(0, caret) +
     caretMarker +
     textContent.substring(caret);
+
+  let anchorOffset = 0;
+
+  const caretPos = text.indexOf(caretMarker);
+  if (caretPos === 0) {
+    text = text.replace(caretMarker, ``);
+  }
 
   // Convert text to HTML while tracking where to place
   // the caret based on where it was in the original text.
@@ -214,27 +221,44 @@ export function convertFromMarkDown({ textContent }, caret = 0) {
     .replace(/`([^<]+)`/g, `<code>$1</code>`)
     .replace(/⁜/, "`")
     // links aren't super special
-    .replace(/\[([^<()\]]+)\]\(([^<()]+)\)/g, `<a href="$2">$1</a>`);
+    .replace(/\[([^<()\]]+)\]\(([^<()]+)\)/g, `<a href="$2">$1</a>`)
+    // tables are ... more work
+    .replace(/((\|[^\n]+\|\n?)+)/gm, (_, lines) => {
+      const set = lines.split(`\n`);
+      for (let i = 0, e = set.length; i < e; i++) {
+        set[i] = set[i].substring(1, set[i].length - 1);
+      }
+      const headers = set.shift().split(`|`);
+      const colCount = headers.length;
+      set.shift(); // header split line
+      const data = set
+        .map((line) => line.split(`|`))
+        .filter((l) => l.length === colCount);
+      return `<table><thead><tr>${headers
+        .map((e) => `<th>${e}</th>`)
+        .join(``)}</tr></thead><tbody>${data
+        .map((row) => `<tr>${row.map((td) => `<td>${td}</td>`).join(``)}</tr>`)
+        .join(``)}</tbody></table>`;
+    });
 
   const div = document.createElement(`div`);
   div.innerHTML = html.trim();
   const nodes = Array.from(div.childNodes);
 
-  let anchorNode, anchorOffset;
-  const tree = document.createTreeWalker(div, 4, () => 1);
-  for (let tn = tree.nextNode(); tn; tn = tree.nextNode()) {
-    const pos = tn.textContent.indexOf(caretMarker);
-    if (pos >= 0) {
-      tn.textContent = tn.textContent.replace(caretMarker, ``);
-      anchorNode = tn;
-      anchorOffset = pos;
-      break;
+  let anchorNode = getFirstTextNode(div);
+
+  if (caretPos > 0) {
+    const tree = document.createTreeWalker(div, 4, () => 1);
+    for (let tn = tree.nextNode(); tn; tn = tree.nextNode()) {
+      const pos = tn.textContent.indexOf(caretMarker);
+      if (pos >= 0) {
+        tn.textContent = tn.textContent.replace(caretMarker, ``);
+        anchorNode = tn;
+        anchorOffset = pos;
+        break;
+      }
     }
   }
 
   return { nodes, anchorNode, anchorOffset };
 }
-
-window.getMarkdownVersion = () => {
-  return convertToMarkdown(document.body).text.trim();
-};

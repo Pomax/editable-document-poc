@@ -132,6 +132,16 @@ html {
         width: 100%;
         min-height: 4em;
       }
+      table {
+        border-collapse: collapse;
+        th,
+        td {
+          border: 1px solid black;
+          padding: 1px 5px;
+          height: 1rem;
+          width: 3em;
+        }
+      }
     }
   }
 }

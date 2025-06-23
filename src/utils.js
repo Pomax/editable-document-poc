@@ -28,6 +28,7 @@ export function getFirstTextNode(e) {
   if (e.nodeType === 3) return e;
   const first = e.childNodes[0];
   if (!first) {
+    console.log(e);
     throw new Error(`there is no text node to be found`);
   }
   return getFirstTextNode(first);
@@ -58,4 +59,20 @@ export function replaceWith(element, replacements) {
   if (last.nodetype === 3) return last;
 
   return getFirstTextNode(last);
+}
+
+// removes meaningless whitespace.
+// See https://www.sitepoint.com/removing-useless-nodes-from-the-dom/
+export function clean(node) {
+  const { childNodes } = node;
+  for (let n = 0; n < childNodes.length; n++) {
+    const child = childNodes[n];
+    const { nodeType, nodeValue } = child;
+    if (nodeType === 8 || (nodeType === 3 && !/\S/.test(nodeValue))) {
+      node.removeChild(child);
+      n--;
+    } else if (nodeType === 1) {
+      clean(child);
+    }
+  }
 }

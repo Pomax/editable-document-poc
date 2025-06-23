@@ -4,17 +4,32 @@
  * You slap an MIT license on this, you've already added too much license.
  */
 
-import { Editable, OS } from "../constants.js";
+import { OS } from "../constants.js";
 import {
   getFirstTextNode,
   getLastTextNode,
   replaceWith,
   setDims,
+  clean,
 } from "../utils.js";
-import { convertFromMarkDown, convertToMarkdown } from "../markdown.js";
+import { convertFromMarkDown } from "../markdown.js";
+import { convertToMarkdown } from "./html-to-markdown.js";
 
-const blocks = [`h1`, `h2`, `h3`, `h4`, `p`, `ol`, `ul`, `pre`];
+const blocks = [
+  `h1`,
+  `h2`,
+  `h3`,
+  `h4`,
+  `p`,
+  `ol`,
+  `ul`,
+  `pre`,
+  `blockquote`,
+  `table`,
+];
 const cosmeticsMaster = [`strong`, `em`, `code`, `del`, `sup`, `sub`, `a`];
+
+const Editable = blocks;
 
 const todo = (...args) => console.warn(...args);
 const fixme = (...args) => console.error(...args);
@@ -33,16 +48,24 @@ for (let tn = tree.nextNode(); tn; tn = tree.nextNode()) {
   tn.textContent = tn.textContent.replace(/\n?\s+/g, ` `);
 }
 
+// Also, kill off any nonsense whitespace between tags where it can't do anything anyway.
+clean(document.body);
+
 // Also remove any leading and trailing white space from
 // block level elements, because that's going to cause dumb
 // problems wrt caret placement, too.
 document.querySelectorAll(Editable.join(`,`)).forEach((e) => {
-  const first = getFirstTextNode(e);
-  first.textContent = first.textContent.replace(/^\s+/, ``);
-  const last = getLastTextNode(e);
-  last.textContent = last.textContent.replace(/\s+$/, ``);
+  try {
+    const first = getFirstTextNode(e);
+    first.textContent = first.textContent.replace(/^\s+/, ``);
+    const last = getLastTextNode(e);
+    last.textContent = last.textContent.replace(/\s+$/, ``);
+  } catch (e) {}
 });
 
+// we could use designMode on the document, but we
+// also want spell check enabled, so might as well
+// keep everything local to the document body.
 document.body.contentEditable = true;
 document.body.spellcheck = true;
 
@@ -56,6 +79,7 @@ const handlers = {
   ul: (evt) => changeBlock(`ul`, evt),
   ol: (evt) => changeBlock(`ol`, evt),
   pre: (evt) => changeBlock(`pre`, evt),
+  table: (evt) => formTable(evt),
   // cosmetic handlers
   strong: (evt) => toggleSelection(`strong`, evt),
   code: (evt) => toggleSelection(`code`, evt),
@@ -84,6 +108,7 @@ const keyHandlers = {
   u: (evt) => handlers.ul(evt),
   o: (evt) => handlers.ol(evt),
   e: (evt) => handlers.pre(evt),
+  t: (evt) => handlers.table(evt),
   b: (evt) => handlers.strong(evt),
   c: (evt) => handlers.code(evt),
   d: (evt) => handlers.del(evt),
@@ -119,13 +144,16 @@ function updateEditBar(s = window.getSelection()) {
     const eTag = e.tagName.toLowerCase();
     let block = e.closest(Editable.join(`,`));
     if (block) {
+      let extraHeight = 0;
       const bTag = block.tagName.toLowerCase();
       const { x, y, height: h } = block.getBoundingClientRect();
       options.removeAttribute(`hidden`);
       fixme(`Magic constants abound here, and there should be exactly zero`);
       if (y < 50) {
-        setDims(options, x, y + h + 10);
-      } else setDims(options, x, y - 40);
+        extraHeight = -(h + 10);
+      } else {
+        extraHeight = 40;
+      }
       options.querySelectorAll(`button`).forEach((b) => {
         const label = b.textContent;
         b.disabled = !(
@@ -145,18 +173,89 @@ function updateEditBar(s = window.getSelection()) {
       });
       const extras = options.querySelector(`.extra`);
       extras.innerHTML = ``;
+      // link extras: the href attribute
       if (eTag === `a`) {
         extras.innerHTML = `
+        <div>
           <label>URL:</label>
           <input type="url" value="${e.href}" style="width: 40em">
+        </div>
         `;
         extras
           .querySelector(`[type="url"]`)
           .addEventListener(`input`, (evt) => {
             e.href = evt.target.value;
           });
-        setDims(options, x, y - 65);
+        extraHeight += 25;
       }
+      // table extras: row x col x "headers or plain"
+      if (bTag === `table`) {
+        let rows, rc, cols, cc;
+        const tbody = block.querySelector(`tbody`);
+        const update = () => {
+          rows = Array.from(block.querySelectorAll(`tr`));
+          rc = rows.length;
+          cols = rows[0].querySelectorAll(`td,th`);
+          cc = cols.length;
+        };
+        update();
+
+        extras.innerHTML = `
+          <div>
+            <label>rows:</label>
+            <input name="rows" type="number" value="${rc}" min="2" step="1"> 
+            <label>columns:</label>
+            <input name="cols" type="number" value="${cc}" min="1" step="1"> 
+          </div>
+        `;
+
+        // Pretty inefficient, but it gets the job done for now.
+        extras
+          .querySelector(`input[name="rows"]`)
+          .addEventListener(`change`, (evt) => {
+            let rowCount = parseFloat(evt.target.value);
+            while (rowCount < rc) {
+              const rem = rows.pop();
+              rem.parentNode.removeChild(rem);
+              update();
+            }
+            while (rowCount > rc) {
+              const row = create(`tr`);
+              for (let td of cols) {
+                td = create(`td`);
+                td.textContent = ``;
+                row.appendChild(td);
+              }
+              tbody.appendChild(row);
+              update();
+            }
+          });
+
+        // especially this one. Super silly.
+        extras
+          .querySelector(`input[name="cols"]`)
+          .addEventListener(`change`, (evt) => {
+            let colCount = parseFloat(evt.target.value);
+            while (colCount < cc) {
+              rows.forEach((row) => {
+                const cols = Array.from(row.querySelectorAll(`th,td`));
+                cols.at(-1).remove();
+              });
+              update();
+            }
+            while (colCount > cc) {
+              rows.forEach((row, i) => {
+                const tag = i === 0 ? `th` : `td`;
+                const cell = create(tag);
+                row.appendChild(cell);
+              });
+              update();
+            }
+          });
+
+        extraHeight += 25;
+      }
+      setDims(options, x, y - extraHeight);
       return;
     }
   }
@@ -210,7 +309,8 @@ document.addEventListener(`keydown`, (evt) => {
   } else {
     const s = window.getSelection();
     highlight(s);
-    lastDown.markdown = s.anchorNode.parentNode.closest(`.live-markdown`);
+    lastDown.element = s.anchorNode.parentNode;
+    lastDown.markdown = lastDown.element.closest(`.live-markdown`);
   }
 });
 
@@ -221,7 +321,7 @@ document.addEventListener(`keyup`, (evt) => {
   if (evt.target.closest(`.edit-options`)) return;
 
   const { key } = evt;
-  const { markdown } = lastDown;
+  const { markdown, element } = lastDown;
   const s = window.getSelection();
   highlight(s);
   updateEditBar(s);
@@ -234,6 +334,63 @@ document.addEventListener(`keyup`, (evt) => {
   if (markdown) {
     if (e && !b) toggleMarkdown(undefined, markdown);
     lastDown.markdown = false;
+  }
+
+  // the table head does some weird things, stealing the focus
+  // for the entire table, as if there is no tbody to work with.
+  // So: check if we're leaving a <th> and if so, do the right
+  // thing instead.
+  if (element?.tagName.toLowerCase() === `th`) {
+    // Are we exiting a table heading cell?
+    if (key === `ArrowDown`) {
+      const table = element.closest(`table`);
+      const index = Array.from(table.querySelectorAll(`thead tr th`)).findIndex(
+        (n) => n === element
+      );
+      const qs = `tbody tr td:nth-child(${1 + index})`;
+      const target = table.querySelector(qs);
+      s.removeAllRanges();
+      s.addRange(range(target, 0));
+      highlight(s);
+      updateEditBar(s);
+      return;
+    }
+  }
+  // if we're entering a table header cell, did we just skip the entire tbody?
+  else if (e?.tagName.toLowerCase() === `th`) {
+    const { y: y1 } = element.getBoundingClientRect();
+    const { y: y2 } = e.getBoundingClientRect();
+    if (y1 > y2) {
+      // we did. Go to the last (corresponding) element in tbody, instead.
+      const table = e.closest(`table`);
+      const index = Array.from(table.querySelectorAll(`thead tr th`)).findIndex(
+        (n) => n === e
+      );
+      const qs = `tbody tr:last-child td:nth-child(${1 + index})`;
+      const target = table.querySelector(qs);
+      s.removeAllRanges();
+      s.addRange(range(target, 0));
+      highlight(s);
+      updateEditBar(s);
+      return;
+    }
+  }
+  // or, did we just skip up past our heading? Get back here.
+  else if (element?.tagName.toLowerCase() === `td`) {
+    const eTag = e.tagName.toLowerCase();
+    if (eTag !== `td` && eTag !== `th` && key === `ArrowUp`) {
+      const table = element.closest(`table`);
+      const index = Array.from(
+        table.querySelectorAll(`tbody tr:nth-child(1) td`)
+      ).findIndex((n) => n === element);
+      const qs = `thead tr th:nth-child(${1 + index})`;
+      const target = table.querySelector(qs);
+      s.removeAllRanges();
+      s.addRange(range(target, 0));
+      highlight(s);
+      updateEditBar(s);
+      return;
+    }
   }
 
   // Did we just type markdown, outside of markdown
@@ -265,6 +422,9 @@ document.addEventListener(`keyup`, (evt) => {
   }
 });
 
+/**
+ * ...
+ */
 function highlight(s) {
   let e = s.anchorNode;
   if (!e) return;
@@ -511,9 +671,16 @@ function toggleMarkdown(evt, element) {
 
   // convert from markdown to HTML
   if (isMarkDownBlock) {
-    const original = create(b.__cached_tag);
+    // const original = create(b.__cached_tag);
+    // const { nodes, anchorNode, anchorOffset } = convertFromMarkDown(b, o);
+    // for (const c of nodes) original.appendChild(c);
+
     const { nodes, anchorNode, anchorOffset } = convertFromMarkDown(b, o);
-    for (const c of nodes) original.appendChild(c);
+    let original = nodes[0];
+    if (original.tagName?.toLowerCase() !== b.__cached_tag) {
+      original = create(b.__cached_tag);
+      for (const c of nodes) original.appendChild(c);
+    }
     b.parentNode.replaceChild(original, b);
     s.removeAllRanges();
     s.addRange(range(anchorNode, anchorOffset));
@@ -521,16 +688,16 @@ function toggleMarkdown(evt, element) {
 
   // convert from HTML to markdown
   else {
-    const markdown = convertToMarkdown(b, n, o);
+    const { text, caret } = convertToMarkdown(b, n, o);
     const pre = create(`pre`);
     pre.__cached_tag = b.tagName.toLowerCase();
-    pre.textContent = markdown.text;
+    pre.textContent = text;
     pre.classList.add(`live-markdown`);
     pre.style.whiteSpace = `pre-wrap`;
     b.parentNode.replaceChild(pre, b);
     target = pre.childNodes[0];
     s.removeAllRanges();
-    s.addRange(range(target, markdown.caret));
+    s.addRange(range(target, caret));
   }
 }
 
