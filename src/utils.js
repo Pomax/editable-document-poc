@@ -1,18 +1,10 @@
-const range = document.createRange();
-
-export function mergeForward(textNode, next) {
-  const offset = textNode.textContent.length;
-  textNode.textContent += next.textContent;
-  textNode.parentNode.removeChild(next);
-  return offset;
-}
-
-export function selectElement(element) {
-  const selection = window.getSelection();
-  range.selectNode(element);
-  selection.removeAllRanges();
-  selection.addRange(range);
-}
+export const create = (tag) => document.createElement(tag.toLowerCase());
+export const range = (sn, so, en, eo) => {
+  const r = document.createRange();
+  if (sn) r.setStart(sn, so);
+  if (en) r.setEnd(en, eo);
+  return r;
+};
 
 export function setDims(e, x = 0, y = 0, w = `fit-content`, h = `fit-content`) {
   const val = (v) => (typeof v === `number` ? v + `px` : v);

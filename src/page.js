@@ -4,41 +4,18 @@
  * You slap an MIT license on this, you've already added too much license.
  */
 
-import { OS } from "./constants.js";
+import { Editable, cosmeticsMaster, OS } from "./constants.js";
 import {
   getFirstTextNode,
   getLastTextNode,
   replaceWith,
   setDims,
   clean,
+  create,
+  range,
 } from "./utils.js";
-import { convertToMarkdown, convertFromMarkDown } from "./markdown.js";
 
-const blocks = [
-  `h1`,
-  `h2`,
-  `h3`,
-  `h4`,
-  `p`,
-  `ol`,
-  `ul`,
-  `pre`,
-  `blockquote`,
-  `table`,
-];
-const cosmeticsMaster = [`strong`, `em`, `code`, `del`, `sup`, `sub`, `a`];
-
-const Editable = blocks;
-
-const todo = (...args) => console.warn(...args);
-const fixme = (...args) => console.error(...args);
-const create = (tag) => document.createElement(tag.toLowerCase());
-const range = (sn, so, en, eo) => {
-  const r = document.createRange();
-  if (sn) r.setStart(sn, so);
-  if (en) r.setEnd(en, eo);
-  return r;
-};
+import { convertToMarkdown, convertFromMarkDown } from "./markdown/index.js";
 
 // In order to make sure caret positions are sequential,
 // we need to force-collapse white space in all text nodes!
@@ -119,8 +96,6 @@ const keyHandlers = {
   a: (evt) => handlers.all(evt),
 };
 
-const lastDown = {};
-
 const options = document.createElement(`div`);
 options.setAttribute(`hidden`, `hidden`);
 options.classList.add(`edit-options`, `ignore-for-diffing`);
@@ -147,7 +122,7 @@ function updateEditBar(s = window.getSelection()) {
       const bTag = block.tagName.toLowerCase();
       const { x, y, height: h } = block.getBoundingClientRect();
       options.removeAttribute(`hidden`);
-      fixme(`Magic constants abound here, and there should be exactly zero`);
+      // FIXME: Magic constants abound here, and there should be exactly zero
       if (y < 50) {
         extraHeight = -(h + 10);
       } else {
@@ -295,6 +270,10 @@ document.addEventListener(`pointerup`, (evt) => {
   updateEditBar(s);
 });
 
+// Used to track which element "we were in" vs. which
+// element "we're in now" when looking at key handing.
+const lastDown = {};
+
 /**
  * ...
  */
@@ -399,7 +378,7 @@ document.addEventListener(`keyup`, (evt) => {
     const n = s.anchorNode;
     const { nodes } = convertFromMarkDown(n);
     if (nodes.length > 1) {
-      fixme(`Cursor placement after substitution is 100% wonky`);
+      // FIXME: Cursor placement after substitution is 100% wonky
       replaceWith(n, nodes);
       s.removeAllRanges();
       s.addRange(range(caret, 1));
@@ -456,7 +435,7 @@ function changeBlock(tag, evt) {
     focusNode: en,
     focusOffset: eo,
   } = s;
-  const b = s.anchorNode.parentNode.closest(blocks.join(`,`));
+  const b = s.anchorNode.parentNode.closest(Editable.join(`,`));
 
   if (b.closest(`.live-markdown`)) return;
 
@@ -667,19 +646,11 @@ function toggleMarkdown(evt, element) {
   const s = window.getSelection();
   const n = s.anchorNode;
   const o = s.anchorOffset;
-  const b = element ?? n.parentNode.closest(blocks.join(`,`));
+  const b = element ?? n.parentNode.closest(Editable.join(`,`));
   const isMarkDownBlock = b.classList.contains(`live-markdown`);
-
-  todo(
-    `we still need to make sure to update the cursor when this toggle happens`
-  );
 
   // convert from markdown to HTML
   if (isMarkDownBlock) {
-    // const original = create(b.__cached_tag);
-    // const { nodes, anchorNode, anchorOffset } = convertFromMarkDown(b, o);
-    // for (const c of nodes) original.appendChild(c);
-
     const { nodes, anchorNode, anchorOffset } = convertFromMarkDown(b, o);
     let original = nodes[0];
     if (original.tagName?.toLowerCase() !== b.__cached_tag) {
@@ -720,6 +691,6 @@ function selectBlock(evt) {
   s.addRange(range(first, 0, last, last.textContent.length));
 }
 
-fixme(`We can sometimes get spans. We never want spans.`);
-fixme(`Missing <a> support on the HTML side`);
-fixme(`Missing <figure><img><caption> support on the HTML side`);
+// FIXME: We can sometimes get spans. We never want spans.
+// FIXME: Missing <a> support on the HTML side
+// FIXME: Missing <figure><img><caption> support on the HTML side
