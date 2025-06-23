@@ -221,10 +221,10 @@ function updateEditBar(s = window.getSelection()) {
             }
             while (rowCount > rc) {
               const row = create(`tr`);
-              for (let td of cols) {
-                td = create(`td`);
-                td.textContent = ``;
-                row.appendChild(td);
+              for (let cell of cols) {
+                cell = create(`td`);
+                cell.textContent = `-`;
+                row.appendChild(cell);
               }
               tbody.appendChild(row);
               update();
@@ -247,6 +247,7 @@ function updateEditBar(s = window.getSelection()) {
               rows.forEach((row, i) => {
                 const tag = i === 0 ? `th` : `td`;
                 const cell = create(tag);
+                cell.textContent = `-`;
                 row.appendChild(cell);
               });
               update();
