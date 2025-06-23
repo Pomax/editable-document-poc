@@ -1,6 +1,5 @@
-import { Editable } from "./constants.js";
+import { caretMarker, Editable } from "./constants.js";
 import { getFirstTextNode, setDims } from "./utils.js";
-import { HTMLToMarkdown } from "./test/html-to-markdown.js";
 
 export function toggleMarkdown(element) {
   element = element.closest(Editable.join(`,`));
@@ -31,152 +30,11 @@ export function toggleMarkdown(element) {
   document.addEventListener(`pointerdown`, revert);
 }
 
-export function convertToMarkdown(node, anchorNode, anchorOffset) {
-  // return { text: HTMLToMarkdown(node), caret: 0 };
-
-  let chunks = [];
-
-  const addChunk = (text, fromNode = undefined) => {
-    chunks.push({ text, node: fromNode });
-  };
-
-  __convertToMarkdown(node, addChunk);
-
-  let caret = 0;
-  for (const c of chunks) {
-    if (c.node === anchorNode) {
-      caret += anchorOffset;
-      break;
-    }
-    caret += c.text.length;
-  }
-
-  const text = chunks
-    .map((c) => c.text)
-    .join(``)
-    .trim();
-
-  return { text, caret };
-}
-
-function __convertToMarkdown(node, addChunk) {
-  // divs are irrelevant in writing land: ignore them
-  if (node?.classList?.contains(`ignore-for-diffing`)) {
-    return ``;
-  }
-
-  // Text node
-  if (node.nodeType === 3) {
-    if (!node.parentNode.closest(`pre`)) {
-      addChunk(node.textContent.replace(/\n?\s+/g, ` `), node);
-    } else {
-      addChunk(node.textContent, node);
-    }
-  }
-
-  // DOM node
-  else if (node.nodeType === 1) {
-    const tag = node.tagName.toLowerCase();
-
-    // prefix chunks
-    if ([`h1`, `h2`, `h3`, `h4`].includes(tag)) {
-      addChunk(`\n`);
-    }
-    if (tag === `h1`) {
-      addChunk(`# `);
-    }
-    if (tag === `h2`) {
-      addChunk(`## `);
-    }
-    if (tag === `h3`) {
-      addChunk(`### `);
-    }
-    if (tag === `h4`) {
-      addChunk(`#### `);
-    }
-    if (tag === `p`) {
-      addChunk(`\n`);
-    }
-    if (tag === `strong`) {
-      addChunk(`**`);
-    }
-    if (tag === `em`) {
-      addChunk(`_`);
-    }
-    if (tag === `del`) {
-      addChunk(`~`);
-    }
-    if (tag === `sub`) {
-      addChunk(`<sub>`);
-    }
-    if (tag === `sup`) {
-      addChunk(`<sup>`);
-    }
-    if (tag === `a`) {
-      addChunk(`[`);
-    }
-    if (tag === `code`) {
-      if (node.textContent.includes("`")) addChunk("``");
-      else addChunk("`");
-    }
-    if (tag === `li`) {
-      const type = node.parentNode.tagName.toLowerCase();
-      if (type === `ol`) {
-        addChunk(`1. `);
-        // returnText = `1. ${returnText}\n`;
-      }
-      if (type === `ul`) {
-        addChunk(`* `);
-        // returnText = `* ${returnText}\n`;
-      }
-    }
-
-    // child chunks
-    for (const c of node.childNodes) {
-      __convertToMarkdown(c, addChunk);
-    }
-
-    // suffix chunks
-    if ([`h1`, `h2`, `h3`, `h4`, `p`, `li`].includes(tag)) {
-      addChunk(`\n`);
-    }
-    if (tag === `p`) {
-      addChunk(`\n`);
-    }
-    if (tag === `strong`) {
-      addChunk(`**`);
-    }
-    if (tag === `em`) {
-      addChunk(`_`);
-    }
-    if (tag === `del`) {
-      addChunk(`~`);
-    }
-    if (tag === `sub`) {
-      addChunk(`</sub>`);
-    }
-    if (tag === `sup`) {
-      addChunk(`</sup>`);
-    }
-    if (tag === `a`) {
-      addChunk(`](${node.href})`);
-    }
-    if (tag === `code`) {
-      if (node.textContent.includes("`")) addChunk("``");
-      else addChunk("`");
-    }
-  }
-}
-
 export function convertFromMarkDown({ textContent }, caret = 0) {
-  const caretMarker = `CARETMARKETCARETMARKER`;
   const textLen = textContent.length;
+  let text = textContent;
 
-  // TODO: it's possible for the caret to be "in" a tag rather than text,
-  //       in which case I don't care enough to fix that in this PoC, the
-  //       real solution there is to (obviously) not use RegExp replacement
-  //       and have a proper tokenizer/converter track where the caret
-  //       should end up in the conversion result =P
+  // FIXME: move the caret into the nearest text, if it's inside syntax
   const good = (c, v = 1) => textContent.substring(c, c + v).match(/\w/);
   if (!good(caret)) {
     if (caret > 0 && !good(caret, -1)) {
@@ -186,17 +44,17 @@ export function convertFromMarkDown({ textContent }, caret = 0) {
     }
   }
 
-  let text =
-    textContent.substring(0, caret) +
-    caretMarker +
-    textContent.substring(caret);
-
   let anchorOffset = 0;
 
-  const caretPos = text.indexOf(caretMarker);
-  if (caretPos === 0) {
-    text = text.replace(caretMarker, ``);
+  if (caret > 0) {
+    text =
+      textContent.substring(0, caret) +
+      caretMarker +
+      textContent.substring(caret);
   }
+
+  const safify = (d) =>
+    d.replaceAll(`<`, `&lt;`).replaceAll(`>`, `&gt;`).replaceAll("`", `&#x60;`);
 
   // Convert text to HTML while tracking where to place
   // the caret based on where it was in the original text.
@@ -213,12 +71,9 @@ export function convertFromMarkDown({ textContent }, caret = 0) {
     .replace(/(^|[^*])\*([^<*]+)\*/g, `$1<em>$2</em>`)
     .replace(/(^|[^_])_([^<]+)_/g, `$1<em>$2</em>`)
     .replace(/(^|[^~])~([^<]+)~/g, `$1<del>$2</del>`)
-    // This one's obviously weird: backticks inside double backticks need to be
-    // safified so we don't turn ``th`i`s`` into <code>th<code>i</code>s</code>
-    // and instead turn it into <code>th`i`s</code>...
-    .replace(/``(.+)`(.+)``/g, `\`\`$1⁜$2\`\``)
-    .replace(/``([^<]+)``/g, `<code>$1</code>`)
-    .replace(/`([^<]+)`/g, `<code>$1</code>`)
+    // code replacement need uri encoding
+    .replace(/``(.+)``/g, (_, d) => `<code>${safify(d)}</code>`)
+    .replace(/`([^`]+)`/g, (_, d) => `<code>${safify(d)}</code>`)
     .replace(/⁜/, "`")
     // links aren't super special
     .replace(/\[([^<()\]]+)\]\(([^<()]+)\)/g, `<a href="$2">$1</a>`)
@@ -247,7 +102,7 @@ export function convertFromMarkDown({ textContent }, caret = 0) {
 
   let anchorNode = getFirstTextNode(div);
 
-  if (caretPos > 0) {
+  if (caret > 0) {
     const tree = document.createTreeWalker(div, 4, () => 1);
     for (let tn = tree.nextNode(); tn; tn = tree.nextNode()) {
       const pos = tn.textContent.indexOf(caretMarker);
@@ -261,4 +116,134 @@ export function convertFromMarkDown({ textContent }, caret = 0) {
   }
 
   return { nodes, anchorNode, anchorOffset };
+}
+
+/**
+ * ...
+ */
+export function convertToMarkdown(block, textNode, offset) {
+  textNode.textContent =
+    textNode.textContent.substring(0, offset) +
+    caretMarker +
+    textNode.textContent.substring(offset);
+
+  const markdown = HTMLToMarkdown(block);
+  const caret = markdown.indexOf(caretMarker);
+
+  return {
+    text: markdown.replace(caretMarker, ``),
+    caret,
+  };
+}
+
+/**
+ * ...
+ */
+export function HTMLToMarkdown(...nodes) {
+  const markdown = nodes
+    .map((node) => (node.nodeType === 3 ? getText(node) : nodeToMarkdown(node)))
+    .join(``);
+  return markdown;
+}
+
+function getText(node) {
+  const nextTag = node.nextSibling?.tagName?.toLowerCase();
+  if (Editable.includes(nextTag) && !node.textContent.trim()) return ``;
+  return node.textContent;
+}
+
+function nodeToMarkdown(node) {
+  if (node.classList?.contains(`ignore-for-diffing`)) return ``;
+
+  // What is this thing?
+  const tag = node.tagName.toLowerCase();
+
+  // Block elements
+  if (tag === `h1`) return headingToMarkdown(node, 1);
+  if (tag === `h2`) return headingToMarkdown(node, 2);
+  if (tag === `h3`) return headingToMarkdown(node, 3);
+  if (tag === `h4`) return headingToMarkdown(node, 4);
+  if (tag === `p`) return paragraphToMarkdown(node);
+  if (tag === `ol`) return listToMarkdown(node, true);
+  if (tag === `ul`) return listToMarkdown(node, false);
+  if (tag === `pre`) return preformattedToMarkdown(node);
+  if (tag === `blockquote`) return paragraphToMarkdown(node, `> `);
+
+  // tables are pretty special
+  if (tag === `table`) return tableToMarkdown(node);
+
+  // Cosmetic elements
+  if (tag === `strong`) return cosmeticMarkdown(node, `**`);
+  if (tag === `em`) return cosmeticMarkdown(node, `*`);
+  if (tag === `del`) return cosmeticMarkdown(node, `~`);
+  if (tag === `code`) return codeToMarkdown(node);
+
+  // Special "cosmetics"
+  if (tag === `a`) return linkToMarkdown(node);
+
+  // "...don't know? You figure it out"
+  return HTMLToMarkdown(...node.childNodes);
+}
+
+function headingToMarkdown({ childNodes }, n = 1) {
+  return `${`#`.repeat(n)} ${HTMLToMarkdown(...childNodes)}\n`;
+}
+
+function paragraphToMarkdown({ childNodes }, prefix = ``) {
+  return `${prefix}${HTMLToMarkdown(...childNodes)}\n`;
+}
+
+function listToMarkdown({ childNodes }, ordered = false) {
+  // FIXME: note that this does not support nested lists right now
+  return (
+    Array.from(childNodes)
+      .filter((e) => e?.tagName?.toLowerCase() === `li`)
+      .map((li) => listItemToMarkdown(li, ordered))
+      .join(`\n`) + `\n`
+  );
+}
+
+function listItemToMarkdown({ childNodes }, ordered = false) {
+  return `${ordered ? `1.` : `*`} ${HTMLToMarkdown(...childNodes)}`;
+}
+
+function preformattedToMarkdown({ childNodes }, language = ``) {
+  return "```" + language + "\n" + HTMLToMarkdown(...childNodes) + "\n```\n";
+}
+
+function cosmeticMarkdown({ childNodes }, opener, closer = opener) {
+  return `${opener}${HTMLToMarkdown(...childNodes)}${closer}`;
+}
+
+function codeToMarkdown(node) {
+  const markup = node.textContent.includes("`") ? "``" : "`";
+  return cosmeticMarkdown(node, markup);
+}
+
+function linkToMarkdown({ childNodes, href }) {
+  return `[${HTMLToMarkdown(...childNodes)}](${href})`;
+}
+
+function tableToMarkdown(node) {
+  let header = ``;
+
+  const rows = Array.from(node.querySelectorAll(`tbody tr`));
+  const colCount = rows[0].querySelectorAll(`td`).length;
+
+  // we only accept tables with thead/tbody
+  const headings = Array.from(node.querySelectorAll(`thead tr th`));
+  if (headings.length) {
+    header =
+      `| ${headings.map((e) => e.textContent).join(` | `)} |\n` +
+      `|-${`|-`.repeat(colCount - 1)}|\n`;
+  }
+
+  const convertCell = (cell) => HTMLToMarkdown(...cell.childNodes);
+  const convertRow = (row) =>
+    `| ${Array.from(row.querySelectorAll(`td`))
+      .map(convertCell)
+      .join(` | `)} |`;
+  const data = rows.map(convertRow).join(`\n`) + `\n`;
+
+  return header + data;
 }

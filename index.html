@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width" />
   <title>An editable HTML document PoC</title>
   <link rel="stylesheet" href="css/style.css" async />
-  <script src="./src/test/page.js" type="module" async></script>
+  <script src="./src/page.js" type="module" async></script>
 </head>
 
 <body>
@@ -226,6 +226,17 @@
     click or long-press and open the link in a new tab that way)
   </p>
 
+  <h2>More bug! I can't hot key to the URL bar!</h2>
+
+  <p>
+    Yeah, kind of a consequence of <code>ctrl/cmd-L</code> being the hotkey for
+    links. Because going to the URL bar while you're editing a document makes no
+    sense, "what's a URL? We're document editing". If you to change the URL in
+    the browser, for as long as this is an in-browser PoC, just click/tap the
+    URL bar. Once this gets wrapped up as an electron-or-similar application,
+    There won't even be a URL bar, so don't worry: not a bug.
+  </p>
+
   <h2>What's left?</h2>
 
   <p>
@@ -236,7 +247,12 @@
   </p>
 
   <ul>
-    <li>Better UI for working with links.</li>
+    <li>blockquote support</li>
+    <li>proper code blocks</li>
+    <li>
+      improved UI for links (e.g. some way to get from text to the URL field,
+      and enter on the URL field taking you back to the text)
+    </li>
     <li>
       UI for working with images. Which really means
       <code>&lt;figure&gt;</code> HTML and the associated markdown.

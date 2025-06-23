@@ -9,8 +9,19 @@ export const Keys = {
 };
 
 // Directly editable elements "root" elements.
-export const Editable = [`pre`, `p`, `h1`, `h2`, `h3`, `h4`, `ul`, `ol`, `img`];
-
+export const Editable = [
+  // blockquote is still missing
+  `h1`,
+  `h2`,
+  `h3`,
+  `h4`,
+  `img`,
+  `ol`,
+  `p`,
+  `pre`,
+  `table`,
+  `ul`,
+];
 // Alements where leading and trailing white space can be safely removed.
 export const Trimmable = [`main`, `header`, `div`, `section`, `li`];
 
@@ -19,3 +30,6 @@ export const Cosmetic = [`strong`, `em`, `b`, `i`, `s`, `code`, `a`];
 
 // Which OS are we in? Because we need to know which hotkeys to intercept
 export const OS = navigator.userAgent.includes("Mac OS") ? `mac` : `pc`;
+
+// Used for tracking the caret across html<->markdown conversions
+export const caretMarker = `CARETMARKETCARETMARKER`;
