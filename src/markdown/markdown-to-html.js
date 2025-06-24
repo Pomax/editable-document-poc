@@ -5,8 +5,6 @@ export function convertFromMarkDown({ textContent }, caret = 0) {
   const textLen = textContent.length;
   let text = textContent;
 
-  console.log(text);
-
   // FIXME: move the caret into the nearest text, if it's inside syntax
   const good = (c, v = 1) => textContent.substring(c, c + v).match(/\w/);
   if (!good(caret)) {
@@ -38,6 +36,7 @@ export function convertFromMarkDown({ textContent }, caret = 0) {
     .replace(/(^|\n)## (.+)(\n|$)/gm, `<h2>$2</h2>`)
     .replace(/(^|\n)# (.+)(\n|$)/gm, `<h1>$2</h1>`)
     .replace(/(^|\n)\s*\* (.+)(\n|$)/gm, `<li>$2</li>`)
+    .replace(/(^|\n)\s*1. (.+)(\n|$)/gm, `<li>$2</li>`)
     .replace(/(^|\n)> (.+)(\n|$)/gm, `$1<blockquote>$2</blockquote>`)
     // good old "hot mess of bold and italics"
     .replace(/(^|[^*])\*\*\*([^<*]+)\*\*\*/g, `$1<strong><em>$2</em></strong>`)
@@ -45,7 +44,7 @@ export function convertFromMarkDown({ textContent }, caret = 0) {
     .replace(/(^|[^*])\*([^<*]+)\*/g, `$1<em>$2</em>`)
     .replace(/(^|[^_])_([^<]+)_/g, `$1<em>$2</em>`)
     .replace(/(^|[^~])~([^<]+)~/g, `$1<del>$2</del>`)
-    // code replacement need uri encoding
+    // code replacements need uri encoding
     .replace(/``(.+)``/g, (_, d) => `<code>${safify(d)}</code>`)
     .replace(/`([^`]+)`/g, (_, d) => `<code>${safify(d)}</code>`)
     .replace(/⁜/, "`")
@@ -70,13 +69,21 @@ export function convertFromMarkDown({ textContent }, caret = 0) {
         .join(``)}</tbody></table>`;
     });
 
-  console.log(html);
-
   const div = document.createElement(`div`);
   div.innerHTML = html.trim();
   const nodes = Array.from(div.childNodes);
 
-  let anchorNode = getFirstTextNode(div);
+  let anchorNode;
+
+  if (nodes.length === 0) {
+    div.textContent = ` `;
+    const tn = div.childNodes[0];
+    nodes.push(tn);
+    tn.textContent = ``;
+    anchorNode = tn;
+  } else {
+    anchorNode = getFirstTextNode(div);
+  }
 
   if (caret > 0) {
     const tree = document.createTreeWalker(div, 4, () => 1);
@@ -90,8 +97,6 @@ export function convertFromMarkDown({ textContent }, caret = 0) {
       }
     }
   }
-
-  console.log(nodes);
 
   return { nodes, anchorNode, anchorOffset };
 }
