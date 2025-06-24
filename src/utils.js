@@ -68,3 +68,11 @@ export function clean(node) {
     }
   }
 }
+
+export function find(qs) {
+  return document.querySelector(qs);
+}
+
+export function findAll(qs) {
+  return Array.from(document.querySelectorAll(qs));
+}

@@ -13,6 +13,8 @@ import {
   clean,
   create,
   range,
+  find,
+  findAll,
 } from "./utils.js";
 
 import { convertToMarkdown, convertFromMarkDown } from "./markdown/index.js";
@@ -30,7 +32,7 @@ clean(document.body);
 // Also remove any leading and trailing white space from
 // block level elements, because that's going to cause dumb
 // problems wrt caret placement, too.
-document.querySelectorAll(Editable.join(`,`)).forEach((e) => {
+findAll(Editable.join(`,`)).forEach((e) => {
   try {
     const first = getFirstTextNode(e);
     first.textContent = first.textContent.replace(/^\s+/, ``);
@@ -47,6 +49,7 @@ document.body.spellcheck = true;
 
 const handlers = {
   // block handlers
+  blockquote: (evt) => changeBlock(`blockquote`, evt),
   h1: (evt) => changeBlock(`h1`, evt),
   h2: (evt) => changeBlock(`h2`, evt),
   h3: (evt) => changeBlock(`h3`, evt),
@@ -76,6 +79,7 @@ const handlers = {
 };
 
 const keyHandlers = {
+  ".": (evt) => handlers.blockquote(evt),
   1: (evt) => handlers.h1(evt),
   2: (evt) => handlers.h2(evt),
   3: (evt) => handlers.h3(evt),
@@ -297,7 +301,9 @@ document.addEventListener(`keydown`, (evt) => {
  * ...
  */
 document.addEventListener(`keyup`, (evt) => {
-  if (evt.target.closest(`.edit-options`)) return;
+  if (evt.target.closest(`.edit-options`)) {
+    return;
+  }
 
   const { key } = evt;
   const { markdown, element } = lastDown;
@@ -387,12 +393,14 @@ document.addEventListener(`keyup`, (evt) => {
 
   // Enter may create a new div, and we want paragraphs instead.
   if (key === `Enter`) {
-    const div = s.anchorNode;
-    if (div.tagName.toLowerCase() === `div`) {
+    const y = s.anchorNode;
+    const yt = y.tagName.toLowerCase();
+
+    if (yt === `div`) {
       const p = document.createElement(`p`);
       p.textContent = ` `;
       p.childNodes[0].textContent = ``;
-      div.parentNode.replaceChild(p, div);
+      y.parentNode.replaceChild(p, y);
       const r = range(p.childNodes[0], 0);
       s.removeAllRanges();
       s.addRange(r);

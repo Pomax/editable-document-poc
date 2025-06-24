@@ -21,7 +21,7 @@ export function convertToMarkdown(block, textNode, offset) {
 /**
  * ...
  */
-function HTMLToMarkdown(...nodes) {
+export function HTMLToMarkdown(...nodes) {
   const markdown = nodes
     .map((node) => (node.nodeType === 3 ? getText(node) : nodeToMarkdown(node)))
     .join(``);
@@ -59,6 +59,7 @@ function nodeToMarkdown(node) {
   if (tag === `em`) return cosmeticMarkdown(node, `*`);
   if (tag === `del`) return cosmeticMarkdown(node, `~`);
   if (tag === `code`) return codeToMarkdown(node);
+  if (tag === `blockquote`) return cosmeticMarkdown(node, `> `, ``);
 
   // Special "cosmetics"
   if (tag === `a`) return linkToMarkdown(node);

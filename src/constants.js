@@ -3,7 +3,7 @@ export const OS = navigator.userAgent.includes("Mac OS") ? `mac` : `pc`;
 
 // Directly editable elements "root" elements.
 export const Editable = [
-  // blockquote is still missing
+  `blockquote`,
   `h1`,
   `h2`,
   `h3`,

@@ -132,6 +132,29 @@ html {
         width: 100%;
         min-height: 4em;
       }
+      blockquote {
+        position: relative;
+        margin: 0 1rem;
+        padding: 1rem;
+        background: #f7f7f7;
+        border-radius: 1rem;
+        &:before {
+          content: "“";
+          font-size: 3rem;
+          color: #00000050;
+          position: absolute;
+          top: -0.7rem;
+          left: -0.7rem;
+        }
+        &:after {
+          content: "”";
+          font-size: 3rem;
+          color: #00000050;
+          position: absolute;
+          bottom: -2.3rem;
+          right: -0.5rem;
+        }
+      }
       table {
         border-collapse: collapse;
         th,
