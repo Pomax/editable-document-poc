@@ -27,6 +27,8 @@ options.addEventListener(`pointerdown`, (evt) => {
 });
 
 export function updateEditBar(s = window.getSelection()) {
+  const { x: xo } =  document.body.getBoundingClientRect();
+
   let e = s.anchorNode;
   if (!e) return;
   if (e.nodeType === 3) e = e.parentNode;
@@ -147,7 +149,7 @@ export function updateEditBar(s = window.getSelection()) {
 
         extraHeight += 25;
       }
-      setDims(options, x, y - extraHeight);
+      setDims(options, xo, y - extraHeight);
       return;
     }
   }

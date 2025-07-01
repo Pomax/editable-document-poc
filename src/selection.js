@@ -5,8 +5,10 @@ import { updateEditBar } from "./edit-options.js";
  * ...
  */
 export function setSelection(s, r) {
-  s.removeAllRanges();
-  s.addRange(r);
+  if (r) {
+    s.removeAllRanges();
+    s.addRange(r);
+  }
   highlight(s);
   updateEditBar(s);
 }

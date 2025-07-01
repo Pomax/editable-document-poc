@@ -113,7 +113,7 @@ html {
       border: 1px solid black;
       box-sizing: border-box;
 
-      width: fit-content;
+      width: 100%;
       height: fit-content;
 
       & button {

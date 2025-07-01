@@ -7,5 +7,4 @@
 import "./make-editable.js";
 
 // FIXME: We can sometimes get spans. We never want spans.
-// FIXME: Missing <a> support on the HTML side
 // FIXME: Missing <figure><img><caption> support on the HTML side

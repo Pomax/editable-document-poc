@@ -49,7 +49,8 @@ export function convertFromMarkDown({ textContent }, caret = 0) {
     .replace(/`([^`]+)`/g, (_, d) => `<code>${safify(d)}</code>`)
     .replace(/⁜/, "`")
     // links aren't super special
-    .replace(/\[([^<()\]]+)\]\(([^<()]+)\)/g, `<a href="$2">$1</a>`)
+    .replace(/!\[([^<()\]]+)\]\(([^<()]+)\)/g, `<img src="$2" alt="$1">`)
+    .replace(/[^!]\[([^<()\]]+)\]\(([^<()]+)\)/g, `<a href="$2">$1</a>`)
     // tables are ... more work
     .replace(/((\|[^\n]+\|\n?)+)/gm, (_, lines) => {
       const set = lines.split(`\n`);
