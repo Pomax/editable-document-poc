@@ -27,10 +27,24 @@ export function convertFromMarkDown({ textContent }, caret = 0) {
   const safify = (d) =>
     d.replaceAll(`<`, `&lt;`).replaceAll(`>`, `&gt;`).replaceAll("`", `&#x60;`);
 
+  const safeuri = (d) => d.replaceAll(`_`, `%5F`).replaceAll(`*`, `%2A`);
+
   // Convert text to HTML while tracking where to place
   // the caret based on where it was in the original text.
   const html = text
-    // ...obviously this is PoC code...
+    // links aren't super special
+    .replace(
+      /!\[([^\]]+)\]\(([^<()]+)\)/g,
+      (_, a, b) =>
+        `<figure><img src="${safeuri(
+          b
+        )}"><figcaption>${a}</figcaption></figure>`
+    )
+    .replace(
+      /[^!]\[([^\]]+)\]\(([^<()]+)\)/g,
+      (_, a, b) => `<a href="${safeuri(b)}">${a}</a>`
+    )
+    // ...and obviously, this is PoC code...
     .replace(/(^|\n)#### (.+)(\n|$)/gm, `<h4>$2</h4>`)
     .replace(/(^|\n)### (.+)(\n|$)/gm, `<h3>$2</h3>`)
     .replace(/(^|\n)## (.+)(\n|$)/gm, `<h2>$2</h2>`)
@@ -47,11 +61,7 @@ export function convertFromMarkDown({ textContent }, caret = 0) {
     // code replacements need uri encoding
     .replace(/``(.+)``/g, (_, d) => `<code>${safify(d)}</code>`)
     .replace(/`([^`]+)`/g, (_, d) => `<code>${safify(d)}</code>`)
-    .replace(/⁜/, "`")
-    // links aren't super special
-    .replace(/!\[([^<()\]]+)\]\(([^<()]+)\)/g, `<img src="$2" alt="$1">`)
-    .replace(/[^!]\[([^<()\]]+)\]\(([^<()]+)\)/g, `<a href="$2">$1</a>`)
-    // tables are ... more work
+    // tables are ... quite a bit more work
     .replace(/((\|[^\n]+\|\n?)+)/gm, (_, lines) => {
       const set = lines.split(`\n`);
       for (let i = 0, e = set.length; i < e; i++) {

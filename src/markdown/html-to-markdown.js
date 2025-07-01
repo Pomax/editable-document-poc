@@ -54,6 +54,9 @@ function nodeToMarkdown(node) {
   // tables are pretty special
   if (tag === `table`) return tableToMarkdown(node);
 
+  // as are figures
+  if (tag === `figure`) return figureToMarkdown(node);
+
   // Cosmetic elements
   if (tag === `strong`) return cosmeticMarkdown(node, `**`);
   if (tag === `em`) return cosmeticMarkdown(node, `*`);
@@ -129,6 +132,12 @@ function tableToMarkdown(node) {
   const data = rows.map(convertRow).join(`\n`) + `\n`;
 
   return header + data;
+}
+
+function figureToMarkdown(node) {
+  const url = node.querySelector(`img`).src;
+  const caption = node.querySelector(`figcaption`).textContent;
+  return `![${caption}](${url})`;
 }
 
 function passThrough(node) {
