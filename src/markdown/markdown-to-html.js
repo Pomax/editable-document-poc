@@ -1,7 +1,8 @@
 import { caretMarker } from "../constants.js";
 import { getFirstTextNode } from "../utils.js";
 
-export function convertFromMarkDown({ textContent }, caret = 0) {
+export function convertFromMarkDown(node, caret = 0) {
+  const { textContent } = node;
   const textLen = textContent.length;
   let text = textContent;
 
@@ -31,7 +32,7 @@ export function convertFromMarkDown({ textContent }, caret = 0) {
 
   // Convert text to HTML while tracking where to place
   // the caret based on where it was in the original text.
-  const html = text
+  let html = text
     // links aren't super special
     .replace(
       /!\[([^\]]+)\]\(([^<()]+)\)/g,
@@ -49,8 +50,23 @@ export function convertFromMarkDown({ textContent }, caret = 0) {
     .replace(/(^|\n)### (.+)(\n|$)/gm, `<h3>$2</h3>`)
     .replace(/(^|\n)## (.+)(\n|$)/gm, `<h2>$2</h2>`)
     .replace(/(^|\n)# (.+)(\n|$)/gm, `<h1>$2</h1>`)
-    .replace(/(^|\n)\s*\* (.+)(\n|$)/gm, `<li>$2</li>`)
-    .replace(/(^|\n)\s*1. (.+)(\n|$)/gm, `<li>$2</li>`)
+    // list items and wrappers
+    .replace(/(^|\n)\s*\* (.+)(\n|$)/gm, `<uli>$2</uli>`)
+    .replace(/(^|\n)\s*1. (.+)(\n|$)/gm, `<oli>$2</oli>`)
+    .replace(/(.{0,6})<((.)li)>/gm, (_, prefix, tag, type) => {
+      if (!prefix || !prefix.includes(`/${tag}>`)) {
+        return prefix + `<${type}l><li>`;
+      }
+      return _;
+    })
+    .replace(/<\/((.)li)>(.{0,6})/gm, (_, tag, type, suffix) => {
+      if (!suffix || !suffix.includes(`${tag}>`)) {
+        return `</li></${type}l>` + suffix;
+      }
+      return _;
+    })
+    .replaceAll(/<(\/?)[ou]li>/gm, `<$1li>`)
+    // quotes?
     .replace(/(^|\n)> (.+)(\n|$)/gm, `$1<blockquote>$2</blockquote>`)
     // good old "hot mess of bold and italics"
     .replace(/(^|[^*])\*\*\*([^<*]+)\*\*\*/g, `$1<strong><em>$2</em></strong>`)
@@ -59,7 +75,11 @@ export function convertFromMarkDown({ textContent }, caret = 0) {
     .replace(/(^|[^_])_([^<]+)_/g, `$1<em>$2</em>`)
     .replace(/(^|[^~])~([^<]+)~/g, `$1<del>$2</del>`)
     // code replacements need uri encoding
-    .replace(/``(.+)``/g, (_, d) => `<code>${safify(d)}</code>`)
+    .replace(/```([^\n]*)\n([\w\W]+)\n```/gm, (_, a, b) => {
+      console.log(`code block`, _, a, b);
+      return `<pre><code data-lang="${a}">${safify(b)}</code></pre>`;
+    })
+    .replace(/``([^`].+[^`])``/g, (_, d) => `<code>${safify(d)}</code>`)
     .replace(/`([^`]+)`/g, (_, d) => `<code>${safify(d)}</code>`)
     // tables are ... quite a bit more work
     .replace(/((\|[^\n]+\|\n?)+)/gm, (_, lines) => {
@@ -78,13 +98,22 @@ export function convertFromMarkDown({ textContent }, caret = 0) {
         .join(``)}</tr></thead><tbody>${data
         .map((row) => `<tr>${row.map((td) => `<td>${td}</td>`).join(``)}</tr>`)
         .join(``)}</tbody></table>`;
-    });
+    })
+    // then finally, we need to wrap paragraphs in `<p>` tags...
+    .replace(/(^|\n)(\w[^|\n]+)(\n|$)/gm, (_, a, b) => `<p>${b}</p>`);
 
   const div = document.createElement(`div`);
   div.innerHTML = html.trim();
-  const nodes = Array.from(div.childNodes);
 
   let anchorNode;
+  const mark = div.querySelector(`mark`);
+  if (mark) {
+    anchorNode = document.createTextNode(``);
+    anchorOffset = 0;
+    mark.parentNode.replaceChild(anchorNode, mark);
+  }
+
+  const nodes = Array.from(div.childNodes);
 
   if (nodes.length === 0) {
     div.textContent = ` `;
@@ -92,21 +121,8 @@ export function convertFromMarkDown({ textContent }, caret = 0) {
     nodes.push(tn);
     tn.textContent = ``;
     anchorNode = tn;
-  } else {
+  } else if (!anchorNode) {
     anchorNode = getFirstTextNode(div);
-  }
-
-  if (caret > 0) {
-    const tree = document.createTreeWalker(div, 4, () => 1);
-    for (let tn = tree.nextNode(); tn; tn = tree.nextNode()) {
-      const pos = tn.textContent.indexOf(caretMarker);
-      if (pos >= 0) {
-        tn.textContent = tn.textContent.replace(caretMarker, ``);
-        anchorNode = tn;
-        anchorOffset = pos;
-        break;
-      }
-    }
   }
 
   return { nodes, anchorNode, anchorOffset };

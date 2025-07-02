@@ -22,3 +22,28 @@ findAll(Editable.join(`,`)).forEach((e) => {
 
 // Also, kill off any nonsense whitespace between tags where it can't do anything anyway.
 clean(document.body);
+
+// And finally, set up a mutation observer to replace any `<br>` with newlines.
+new MutationObserver((mutationList, observer) => {
+  for (const m of mutationList) {
+    if (m.type === "childList") {
+      for (const e of m.addedNodes) {
+        if (e.tagName?.toLowerCase() === `br`) {
+          const n = document.createTextNode(`\n`);
+          const p = e.parentNode;
+          p.replaceChild(n, e);
+          const r = document.createRange();
+          r.setStart(n, 1);
+          const s = window.getSelection();
+          s.removeAllRanges();
+          s.addRange(r);
+          p.normalize();
+        }
+      }
+    }
+  }
+}).observe(document.body, {
+  attributes: false,
+  childList: true,
+  subtree: true,
+});

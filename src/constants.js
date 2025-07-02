@@ -27,4 +27,4 @@ export const cosmeticsMaster = [
 ];
 
 // Used for tracking the caret across html<->markdown conversions
-export const caretMarker = `CARETMARKETCARETMARKER`;
+export const caretMarker = `<mark>cursor goes here</mark>`;

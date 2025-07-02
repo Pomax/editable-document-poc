@@ -272,13 +272,15 @@ function toggleMarkdown(evt, element) {
   // convert from markdown to HTML
   if (isMarkDownBlock) {
     const { nodes, anchorNode, anchorOffset } = convertFromMarkDown(b, o);
-    let original = nodes[0];
-    if (original.tagName?.toLowerCase() !== b.__cached_tag) {
-      original = create(b.__cached_tag);
-      for (const c of nodes) original.appendChild(c);
+    let last = nodes.pop();
+    b.parentNode.replaceChild(last, b);
+    while (nodes.length) {
+      const _ = nodes.pop();
+      last.parentNode.insertBefore(_, last);
+      last = _;
     }
-    b.parentNode.replaceChild(original, b);
     setSelection(s, range(anchorNode, anchorOffset));
+    anchorNode.parentNode.normalize();
   }
 
   // convert from HTML to markdown
