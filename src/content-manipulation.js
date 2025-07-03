@@ -22,16 +22,14 @@ export const handlers = {
   em: (evt) => toggleSelection(`em`, evt),
   a: (evt) =>
     toggleSelection(`a`, evt, (a) => {
-      console.log(`after`, a);
       if (a) a.href = ``;
     }),
   // unusual cosmetic handlers
   sup: (evt) => toggleSelection(`sup`, evt),
   sub: (evt) => toggleSelection(`sub`, evt),
+  img: (evt) => addImage(`img`, evt),
   // markdown toggle
   markdown: (evt) => toggleMarkdown(evt),
-  // select-all
-  all: (evt) => selectBlock(evt),
 };
 
 /**
@@ -250,8 +248,6 @@ function removeMarkup(tag, s, offset, e, contained, cosmetics) {
     }
   }
 
-  console.log(`using`, { tn, c });
-
   r.setStart(tn, c);
   r.setEnd(tn, c);
   setSelection(s, r);
@@ -264,7 +260,12 @@ function toggleMarkdown(evt, element) {
   evt?.preventDefault?.();
   let target;
   const s = window.getSelection();
-  const n = s.anchorNode;
+  let n = s.anchorNode;
+  // figures can have ... weird behaviour, due to the img element
+  // not having a text node as child (it's a void element)
+  if (n.tagName?.toLowerCase() === `figure`) {
+    n = n.querySelector(`figcaption`).childNodes[0];
+  }
   const o = s.anchorOffset;
   const b = element ?? n.parentNode.closest(Editable.join(`,`));
   const isMarkDownBlock = b.classList.contains(`live-markdown`);
@@ -295,4 +296,41 @@ function toggleMarkdown(evt, element) {
     target = pre.childNodes[0];
     setSelection(s, range(target, caret));
   }
+}
+
+/**
+ * ...
+ */
+function addImage(evt) {
+  evt?.preventDefault?.();
+  let target;
+  const s = window.getSelection();
+  const n = s.focusNode;
+  const o = s.focusOffset;
+
+  console.log(n);
+
+  const e = n.parentNode.closest(Editable.join(`,`));
+
+  const f = create(`figure`);
+  const i = create(`img`);
+  i.src = `https://placehold.co/600x400/EEE/31343C`;
+  i.alt = `please indicate a source`;
+  f.appendChild(i);
+  const c = create(`figcaption`);
+  c.textContent = `placeholder text`;
+  f.appendChild(c);
+
+  if (o === 0) {
+    e.parentNode.insertBefore(f, e);
+  } else {
+    const s = e.nextSibling;
+    if (s) {
+      e.parentNode.insertBefore(f, s);
+    } else {
+      e.parentNode.appendChild(f);
+    }
+  }
+
+  setSelection(s, range(c.childNodes[0], 0));
 }

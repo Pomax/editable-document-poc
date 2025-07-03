@@ -46,10 +46,10 @@ export function convertFromMarkDown(node, caret = 0) {
       (_, a, b) => `<a href="${safeuri(b)}">${a}</a>`
     )
     // ...and obviously, this is PoC code...
-    .replace(/(^|\n)#### (.+)(\n|$)/gm, `<h4>$2</h4>`)
-    .replace(/(^|\n)### (.+)(\n|$)/gm, `<h3>$2</h3>`)
-    .replace(/(^|\n)## (.+)(\n|$)/gm, `<h2>$2</h2>`)
-    .replace(/(^|\n)# (.+)(\n|$)/gm, `<h1>$2</h1>`)
+    .replace(
+      /(^|\n)(#+) (.+)(\n|$)/gm,
+      (_, a, b, c) => `<h${b.length}>${c}</h${b.length}>`
+    )
     // list items and wrappers
     .replace(/(^|\n)\s*\* (.+)(\n|$)/gm, `<uli>$2</uli>`)
     .replace(/(^|\n)\s*1. (.+)(\n|$)/gm, `<oli>$2</oli>`)

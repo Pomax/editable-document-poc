@@ -14,6 +14,7 @@ export const Editable = [
   `pre`,
   `table`,
   `ul`,
+  `figure`,
 ];
 
 export const cosmeticsMaster = [

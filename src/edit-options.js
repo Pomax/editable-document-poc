@@ -27,7 +27,7 @@ options.addEventListener(`pointerdown`, (evt) => {
 });
 
 export function updateEditBar(s = window.getSelection()) {
-  const { x: xo } =  document.body.getBoundingClientRect();
+  const { x: xo } = document.body.getBoundingClientRect();
 
   let e = s.anchorNode;
   if (!e) return;
@@ -38,7 +38,12 @@ export function updateEditBar(s = window.getSelection()) {
     let block = e.closest(Editable.join(`,`));
     if (block) {
       let extraHeight = 0;
-      const bTag = block.tagName.toLowerCase();
+      let bTag = block.tagName.toLowerCase();
+
+      if (bTag === `figure`) {
+        bTag = `img`;
+      }
+
       const { x, y, height: h } = block.getBoundingClientRect();
       options.removeAttribute(`hidden`);
       // FIXME: Magic constants abound here, and there should be exactly zero
@@ -81,6 +86,25 @@ export function updateEditBar(s = window.getSelection()) {
           });
         extraHeight += 25;
       }
+
+      // image extras: the src attribute
+      if (eTag === `figure` || eTag === `figcaption` || eTag === `img`) {
+        e = e.closest(`figure`);
+        const i = e.querySelector(`img`);
+        extras.innerHTML = `
+        <div>
+          <label>URL:</label>
+          <input type="url" value="${i.src}" style="width: 40em">
+        </div>
+        `;
+        extras
+          .querySelector(`[type="url"]`)
+          .addEventListener(`input`, (evt) => {
+            i.src = evt.target.value;
+          });
+        extraHeight += 25;
+      }
+
       // table extras: row x col x "headers or plain"
       if (bTag === `table`) {
         let rows, rc, cols, cc;
