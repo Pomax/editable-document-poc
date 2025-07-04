@@ -67,6 +67,10 @@ function nodeToMarkdown(node) {
   // Special "cosmetics"
   if (tag === `a`) return linkToMarkdown(node);
 
+  // "we know how to format this"
+  if (tag === `sub`) return inlinePassThrough(node);
+  if (tag === `sup`) return inlinePassThrough(node);
+
   // "...don't know? You figure it out"
   return passThrough(node);
 }
@@ -76,7 +80,7 @@ function headingToMarkdown({ childNodes }, n = 1) {
 }
 
 function paragraphToMarkdown({ childNodes }, prefix = ``) {
-  return `${prefix}${HTMLToMarkdown(...childNodes)}\n`;
+  return `${prefix}${HTMLToMarkdown(...childNodes)}\n\n`;
 }
 
 function listToMarkdown({ childNodes }, ordered = false) {
@@ -140,7 +144,7 @@ function figureToMarkdown(node) {
   return `![${caption}](${url})`;
 }
 
-function passThrough(node) {
+function inlinePassThrough(node) {
   const tag = node.tagName.toLowerCase();
   const attr = Array.from(node.attributes)
     .map((v) => `${v.name}="${v.value}"`)
@@ -148,4 +152,13 @@ function passThrough(node) {
   return `<${tag}${attr.length ? ` ${attr}` : ``}>${HTMLToMarkdown(
     ...node.childNodes
   )}</${tag}>`;
+}
+
+function passThrough(node) {
+  const tag = node.tagName.toLowerCase();
+  const text = inlinePassThrough(node);
+  const tagre = new RegExp(`<${tag}([^>]?)>`, `m`);
+  return text
+    .replace(tagre, `<${tag}$1>\n\n`)
+    .replace(`</${tag}>`, `</${tag}>\n\n`);
 }

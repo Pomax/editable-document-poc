@@ -1,4 +1,5 @@
 import { Editable } from "./constants.js";
+import { HTMLToMarkdown } from "./markdown/html-to-markdown.js";
 import { clean, findAll, getFirstTextNode, getLastTextNode } from "./utils.js";
 
 // In order to make sure caret positions are sequential,
@@ -47,3 +48,12 @@ new MutationObserver((mutationList, observer) => {
   childList: true,
   subtree: true,
 });
+
+// Then, for funsies, add a toMarkDown to the document
+document.__proto__.toMarkDown =
+  document.__proto__.toMarkDown ??
+  function () {
+    const nodes = Array.from(document.body.children);
+    const text = nodes.map((node) => HTMLToMarkdown(node)).join(`\n`);
+    return text.replaceAll(/\n\n+/g, `\n\n`);
+  };
