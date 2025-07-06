@@ -22,7 +22,7 @@ const keyHandlers = {
   e: (evt) => handlers.pre(evt),
   t: (evt) => handlers.table(evt),
   b: (evt) => handlers.strong(evt),
-  c: (evt) => handlers.code(evt),
+  z: (evt) => handlers.code(evt),
   d: (evt) => handlers.del(evt),
   i: (evt) => handlers.em(evt),
   l: (evt) => handlers.a(evt),
@@ -95,19 +95,6 @@ document.addEventListener(`keyup`, (evt) => {
   if (markdown) {
     if (e && !b) handlers.markdown(undefined, markdown);
     lastDown.markdown = false;
-  }
-
-  // Enter may create a new div, and we want paragraphs instead.
-  if (key === `Enter`) {
-    if (eTag === `div`) {
-      const p = document.createElement(`p`);
-      p.textContent = ` `;
-      const tn = p.childNodes[0];
-      tn.textContent = ``;
-      e.parentNode.replaceChild(p, e);
-      const r = range(tn, 0);
-      setSelection(s, r);
-    }
   }
 
   // the table head does some weird things, stealing the focus

@@ -24,17 +24,32 @@ findAll(Editable.join(`,`)).forEach((e) => {
 // Also, kill off any nonsense whitespace between tags where it can't do anything anyway.
 clean(document.body);
 
-// And finally, set up a mutation observer to replace any `<br>` with newlines.
+// And finally, set up a mutation observer to replace any `<br>` with newlines,
+// and replace <div> with <p> because no one wants divs, wtf browsers?
 new MutationObserver((mutationList, observer) => {
   for (const m of mutationList) {
     if (m.type === "childList") {
       for (const e of m.addedNodes) {
-        if (e.tagName?.toLowerCase() === `br`) {
-          const n = document.createTextNode(`\n`);
-          const p = e.parentNode;
+        const tag = e.tagName?.toLowerCase();
+        const p = e.parentNode;
+        let tn = undefined;
+
+        if (tag === `br`) {
+          tn = document.createTextNode(`\n`);
           p.replaceChild(n, e);
+        }
+
+        if (tag === `div`) {
+          const para = document.createElement(`p`);
+          para.textContent = ` `;
+          tn = para.childNodes[0];
+          tn.textContent = ``;
+          p.replaceChild(para, e);
+        }
+
+        if (tn) {
           const r = document.createRange();
-          r.setStart(n, 1);
+          r.setStart(tn, tn.textContent.length);
           const s = window.getSelection();
           s.removeAllRanges();
           s.addRange(r);
@@ -48,12 +63,3 @@ new MutationObserver((mutationList, observer) => {
   childList: true,
   subtree: true,
 });
-
-// Then, for funsies, add a toMarkDown to the document
-document.__proto__.toMarkDown =
-  document.__proto__.toMarkDown ??
-  function () {
-    const nodes = Array.from(document.body.children);
-    const text = nodes.map((node) => HTMLToMarkdown(node)).join(`\n`);
-    return text.replaceAll(/\n\n+/g, `\n\n`);
-  };

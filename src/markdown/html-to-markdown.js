@@ -9,7 +9,7 @@ export function convertToMarkdown(block, textNode, offset) {
     caretMarker +
     textNode.textContent.substring(offset);
 
-  const markdown = HTMLToMarkdown(block);
+  const markdown = HTMLToMarkdown(block).trim();
   const caret = markdown.indexOf(caretMarker);
 
   return {

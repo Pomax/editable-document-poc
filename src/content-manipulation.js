@@ -267,7 +267,9 @@ function toggleMarkdown(evt, element) {
     n = n.querySelector(`figcaption`).childNodes[0];
   }
   const o = s.anchorOffset;
-  const b = element ?? n.parentNode.closest(Editable.join(`,`));
+  const b =
+    element ??
+    (n.nodeType === 3 ? n.parentNode : n).closest(Editable.join(`,`));
   const isMarkDownBlock = b.classList.contains(`live-markdown`);
 
   // convert from markdown to HTML
