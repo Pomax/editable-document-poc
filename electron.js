@@ -1,5 +1,7 @@
 import { app, BrowserWindow } from "electron/main";
-import path from "node:path";
+
+app.commandLine.appendSwitch("disable-gpu");
+app.commandLine.appendSwitch("disable-software-rasterizer");
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -11,7 +13,7 @@ function createWindow() {
   });
 
   win.loadFile("index.html");
-  win.webContents.openDevTools();
+  // win.webContents.openDevTools();
 }
 
 app.whenReady().then(() => {

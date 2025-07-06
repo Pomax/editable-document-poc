@@ -39,14 +39,6 @@ new MutationObserver((mutationList, observer) => {
           p.replaceChild(tn, e);
         }
 
-        if (tag === `div` && !e.closest(`.edit-options`)) {
-          const para = document.createElement(`p`);
-          para.textContent = ` `;
-          tn = para.childNodes[0];
-          tn.textContent = ``;
-          p?.replaceChild(para, e);
-        }
-
         if (tn) {
           const r = document.createRange();
           r.setStart(tn, tn.textContent.length);

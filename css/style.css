@@ -166,7 +166,7 @@ html {
           border: 1px solid black;
           padding: 1px 5px;
           height: 1rem;
-          width: 3em;
+          min-width: 3em;
           text-align: center;
         }
       }

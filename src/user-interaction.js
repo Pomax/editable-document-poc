@@ -1,5 +1,5 @@
 import { OS } from "./constants.js";
-import { range, replaceWith } from "./utils.js";
+import { getFirstTextNode, range, replaceWith } from "./utils.js";
 import { highlight, setSelection } from "./selection.js";
 import { convertFromMarkDown } from "./markdown/index.js";
 import { options, updateEditBar } from "./edit-options.js";
@@ -54,6 +54,30 @@ document.addEventListener(`pointerup`, (evt) => {
   updateEditBar(s);
 });
 
+function getCells(table) {
+  return [...table.querySelectorAll(`tr`)].map((row) => [
+    ...row.querySelectorAll(`th,td`),
+  ]);
+}
+
+function findCell(rows, e) {
+  let x, y, row;
+  for (y = 0; y < rows.length; y++) {
+    row = rows[y];
+    for (x = 0; x < row.length; x++) {
+      if (row[x] === e) {
+        return { x, y };
+      }
+    }
+  }
+  return { x: -1, y: -1 };
+}
+
+function selectCell(s, cell) {
+  const tn = getFirstTextNode(cell);
+  setSelection(s, range(tn, 0));
+}
+
 /**
  * What should happen when a key gets pressed
  */
@@ -62,14 +86,30 @@ document.addEventListener(`keydown`, (evt) => {
 
   const { key, ctrlKey, metaKey } = evt;
   const special = OS === `mac` ? metaKey : ctrlKey;
+
   if (special) {
     keyHandlers[key]?.(evt);
-    updateEditBar();
-  } else {
-    const s = window.getSelection();
-    highlight(s);
-    lastDown.element = s.anchorNode.parentNode;
-    lastDown.markdown = lastDown.element.closest(`.live-markdown`);
+    return updateEditBar();
+  }
+
+  const s = window.getSelection();
+  highlight(s);
+  const e = (lastDown.element = s.anchorNode.parentNode);
+  lastDown.markdown = lastDown.element.closest(`.live-markdown`);
+
+  const table = e.closest(`table`);
+  if (table && (key === `ArrowDown` || key === `ArrowUp`)) {
+    const cells = getCells(table);
+    const dir = key === `ArrowDown` ? +1 : -1;
+    const { x, y } = findCell(cells, e);
+    if (x > -1 && y > -1) {
+      try {
+        selectCell(s, cells[y + dir][x]);
+        evt.preventDefault();
+      } catch (e) {
+        // let the browser handle it
+      }
+    }
   }
 });
 
@@ -97,51 +137,19 @@ document.addEventListener(`keyup`, (evt) => {
     lastDown.markdown = false;
   }
 
-  // the table head does some weird things, stealing the focus
-  // for the entire table, as if there is no tbody to work with.
-  // So: check if we're leaving a <th> and if so, do the right
-  // thing instead.
-  if (element?.tagName.toLowerCase() === `th`) {
-    // Are we exiting a table heading cell?
-    if (key === `ArrowDown`) {
-      const table = element.closest(`table`);
-      const index = Array.from(table.querySelectorAll(`thead tr th`)).findIndex(
-        (n) => n === element
-      );
-      const qs = `tbody tr td:nth-child(${1 + index})`;
-      const target = table.querySelector(qs);
-      setSelection(s, range(target, 0));
-      return;
-    }
-  }
-  // if we're entering a table header cell, did we just skip the entire tbody?
-  else if (e?.tagName.toLowerCase() === `th`) {
-    const { y: y1 } = element.getBoundingClientRect();
-    const { y: y2 } = e.getBoundingClientRect();
-    if (y1 > y2) {
-      // we did. Go to the last (corresponding) element in tbody, instead.
-      const table = e.closest(`table`);
-      const index = Array.from(table.querySelectorAll(`thead tr th`)).findIndex(
-        (n) => n === e
-      );
-      const qs = `tbody tr:last-child td:nth-child(${1 + index})`;
-      const target = table.querySelector(qs);
-      setSelection(s, range(target, 0));
-      return;
-    }
-  }
-  // or, did we just skip up past our heading? Get back here.
-  else if (element?.tagName.toLowerCase() === `td`) {
-    const eTag = e.tagName.toLowerCase();
-    if (eTag !== `td` && eTag !== `th` && key === `ArrowUp`) {
-      const table = element.closest(`table`);
-      const index = Array.from(
-        table.querySelectorAll(`tbody tr:nth-child(1) td`)
-      ).findIndex((n) => n === element);
-      const qs = `thead tr th:nth-child(${1 + index})`;
-      const target = table.querySelector(qs);
-      setSelection(s, range(target, 0));
-      return;
+  // Did we just do a bizarro-land table jump, where we went
+  // from "an element below a table" all the way up to a
+  // table's heading elements, without ever touching the
+  // table's regular cells? If so, don't be stupid please.
+  const table = e.closest(`table`);
+  if (table && !element.closest(`table`)) {
+    const { y: y1 } = table.getBoundingClientRect();
+    const { y: y2 } = element.getBoundingClientRect();
+    if (e.tagName.toLowerCase() === `th` && y2 > y1) {
+      const cells = getCells(table);
+      const x = cells[0].indexOf(e);
+      const cell = cells.at(-1)[x];
+      return selectCell(s, cell);
     }
   }
 
@@ -149,6 +157,19 @@ document.addEventListener(`keyup`, (evt) => {
   // context? If so, we need to insta-convert that.
   const n = s.anchorNode;
   if (n === document.body) return;
+
+  // Enter may create a <div>, and we want <p>> instead.
+  if (key === `Enter`) {
+    const e = n.parentNode;
+    if (e && e.tagName.toLowerCase() === `div`) {
+      const p = document.createElement(`p`);
+      p.textContent = ` `;
+      const tn = p.childNodes[0];
+      tn.textContent = ``;
+      e.parentNode.replaceChild(p, e);
+      setSelection(s, range(tn, 0));
+    }
+  }
 
   if (e && !b) {
     if (e === document.body) return;
