@@ -36,15 +36,15 @@ new MutationObserver((mutationList, observer) => {
 
         if (tag === `br`) {
           tn = document.createTextNode(`\n`);
-          p.replaceChild(n, e);
+          p.replaceChild(tn, e);
         }
 
-        if (tag === `div`) {
+        if (tag === `div` && !e.closest(`.edit-options`)) {
           const para = document.createElement(`p`);
           para.textContent = ` `;
           tn = para.childNodes[0];
           tn.textContent = ``;
-          p.replaceChild(para, e);
+          p?.replaceChild(para, e);
         }
 
         if (tn) {

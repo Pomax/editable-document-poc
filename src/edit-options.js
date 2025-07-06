@@ -5,7 +5,7 @@ import { handlers } from "./content-manipulation.js";
 export const options = document.createElement(`div`);
 options.setAttribute(`hidden`, `hidden`);
 options.classList.add(`edit-options`, `ignore-for-diffing`);
-document.body.append(options);
+document.body.appendChild(options);
 
 const labels = Object.keys(handlers);
 options.innerHTML =
