@@ -184,7 +184,7 @@ html {
   }
 }
 
-@media only screen and (max-width:1200px) {
+@media only screen and (max-width:1000px) {
   body {
     left: 0;
     width: 100%;
