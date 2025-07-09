@@ -35,24 +35,26 @@ const keyHandlers = {
 /**
  * What should happen when the pointer stops being down?
  */
-document.addEventListener(`pointerup`, (evt) => {
-  const { target } = evt;
-  const tag = target.tagName.toLowerCase();
-  if (tag === `html` || tag === `body`) {
-    document
-      .querySelectorAll(`.highlight`)
-      .forEach((e) => e.classList.remove(`highlight`));
-    return options.setAttribute(`hidden`, `hidden`);
-  }
+[`pointerup`, `touchstart`].forEach((type) =>
+  document.addEventListener(type, (evt) => {
+    const { target } = evt;
+    const tag = target.tagName.toLowerCase();
+    if (tag === `html` || tag === `body`) {
+      document
+        .querySelectorAll(`.highlight`)
+        .forEach((e) => e.classList.remove(`highlight`));
+      return options.setAttribute(`hidden`, `hidden`);
+    }
 
-  if (target.closest(`.edit-options`)) {
-    return;
-  }
+    if (target.closest(`.edit-options`)) {
+      return;
+    }
 
-  const s = window.getSelection();
-  highlight(s);
-  updateEditBar(s);
-});
+    const s = window.getSelection();
+    highlight(s);
+    updateEditBar(s);
+  })
+);
 
 function getCells(table) {
   return [...table.querySelectorAll(`tr`)].map((row) => [
