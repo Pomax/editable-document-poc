@@ -35,7 +35,7 @@ const keyHandlers = {
 /**
  * What should happen when the pointer stops being down?
  */
-[`click`, `touchstart`].forEach((type) =>
+[`click`, `touchstart`, `beforeinput`].forEach((type) =>
   document.addEventListener(type, (evt) => {
     const { target } = evt;
     const tag = target.tagName.toLowerCase();
