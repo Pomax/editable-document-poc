@@ -15,16 +15,18 @@ options.innerHTML =
   `<span style="flex-basis: 100%; height: 0"></span>` +
   `<span class="extra"></span>`;
 
-options.addEventListener(`pointerdown`, (evt) => {
-  const { id } = evt.target;
-  let name = id.replace(`btn-`, ``);
-  if (id !== name) {
-    evt.preventDefault();
-    evt.stopPropagation();
-    if (options.querySelector(`#btn-${name}`).disabled) return;
-    handlers[name]();
-  }
-});
+[`click`, `touchstart`].forEach((type) =>
+  options.addEventListener(type, (evt) => {
+    const { id } = evt.target;
+    let name = id.replace(`btn-`, ``);
+    if (id !== name) {
+      evt.preventDefault();
+      evt.stopPropagation();
+      if (options.querySelector(`#btn-${name}`).disabled) return;
+      handlers[name]();
+    }
+  })
+);
 
 export function updateEditBar(s = window.getSelection()) {
   const { x: xo } = document.body.getBoundingClientRect();
